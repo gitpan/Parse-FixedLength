@@ -8,7 +8,7 @@ use strict;
 use Carp;
 use Scalar::Util qw(reftype);
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.14';
+$VERSION   = '5.15';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -229,7 +229,7 @@ sub new {
    my $class = ref($proto) || $proto;
    my $self = bless {}, $class;
 
-   my ($parser1, $parser2, $mappings, $defaults) = @_;
+   my ($parser1, $parser2, $mappings, $defaults, $parms) = @_;
    $self->{UNPACKER} = $parser1;
    $self->{PACKER} = $parser2;
    my $type = reftype($mappings) || '';
@@ -237,19 +237,26 @@ sub new {
    $self->{MAP} = { reverse $type eq 'HASH' ? %$mappings : @$mappings };
    croak 'Defaults arg not a hash ref'
      unless (reftype($defaults) || '') eq 'HASH';
-   $self->{DEFAULTS} = $defaults;
+   my ($consts, $crefs) = ({}, {});
+   while (my ($field, $default) = each %$defaults) {
+       my $rtype = reftype($default);
+       croak 'Default for field $field not a constant or code ref'
+           unless (!defined $rtype or $rtype eq 'CODE');
+       (defined $rtype ? $$crefs{$field} : $$consts{$field}) = $default;
+   }
+   $self->{CONSTANTS} = $consts;
+   $self->{CODEREFS} = $crefs;
+   $self->{NOPACK} = 1 if $parms->{no_pack};
    $self;
 }
 #=======================================================================
 sub convert {
     my $converter = shift;
     my $data_in   = shift;
-    my $unpacker = $converter->{UNPACKER};
     my $packer   = $converter->{PACKER};
     my $map_to   = $converter->{MAP};
-    my $defaults = $converter->{DEFAULTS};
 
-    $data_in = $unpacker->parse($data_in)
+    $data_in = $converter->{UNPACKER}->parse($data_in)
         unless (reftype($data_in) || '') eq 'HASH';
     my $names_out = $packer->names;
 
@@ -260,15 +267,14 @@ sub convert {
     } @$names_out;
 
     # Default/Convert the fields
-    while (my ($name, $default) = each %$defaults) {
-        $data_out{$name} = ref $default
-          ? do {
-            my $tmp = eval { $default->($data_out{$name}, $data_in) };
-            croak "Failed to default field $name: $@" if $@;
-            $tmp;
-          } : $default;
+    while (my ($name, $default) = each %{$converter->{CONSTANTS}}) {
+        $data_out{$name} = $default
     }
-    $packer->pack(\%data_out);
+    while (my ($name, $default) = each %{$converter->{CODEREFS}}) {
+        $data_out{$name} = eval { $default->($data_out{$name}, $data_in) };
+        croak "Failed to default field $name: $@" if $@;
+    }
+    $converter->{NOPACK} ? \%data_out : $packer->pack(\%data_out);
 }
 
 1;
@@ -292,7 +298,7 @@ Parse::FixedLength - parse an ascii string containing fixed length fields into c
     $converter = $parser1->converter($parser2, \%mappings);
     $converter = $parser1->converter($parser2, \@mappings);
     $converter = $parser1->converter($parser2, \%mappings, \%defaults);
-    $converter = $parser1->converter($parser2, \@mappings, \%defaults);
+    $converter = $parser1->converter($parser2, \@maps, \%dflts, \%parms);
 
     $data_out = $converter->convert($data_in);
 
@@ -440,11 +446,7 @@ then it will include the start and ending positions as comments. E.g.:
 
 =item converter()
 
- $converter = $parser1->converter($parser2);
- $converter = $parser1->converter($parser2, \%mappings);
- $converter = $parser1->converter($parser2, \@mappings);
- $converter = $parser1->converter($parser2, \%mappings, \%defaults);
- $converter = $parser1->converter($parser2, \@mappings, \%defaults);
+ $converter = $parser1->converter($parser2, \@maps, \%dflts, \%parms);
 
 Returns a format converting object. $parser1 is the parsing object
 to convert from, $parser2 is the parsing object to convert to.
@@ -469,6 +471,12 @@ you could map 'zip' to 'zip_plus_4' and then supply as one of the
 key/value pairs in the 'defaults' hash ref the following:
 
  zip_plus_4 => sub { shift() . $_[0]{plus_4} }
+
+The fourth argument is an optional hash ref may which may
+contain the following:
+
+ no_pack - If true, the convert() method will return a hash reference
+           instead of packing the data into an ascii string (Default: false).
 
 =item convert()
 

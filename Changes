@@ -1,4 +1,7 @@
 Revision history for Perl extension Parse::FixedLength.
+5.15  Sun Aug 12 14:13:06 PDT 2001
+    - Better error checking on default argument types in converter method.
+    - Added option to not pack during convert method.
 5.14  Wed Aug  1 Some time later...
     - Better error checking on start and end positions. If start is present,
       then both start and end need to be present.
