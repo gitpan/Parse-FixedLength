@@ -9,16 +9,20 @@ use Carp;
 #	Public Global Variables
 #-----------------------------------------------------------------------
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
-$VERSION   = '4.0';
+$VERSION   = '4.1';
 @ISA       = qw(Exporter);
 @EXPORT    = qw(parse print_parsed quick_parse);
 
 #-----------------------------------------------------------------------
 #	Global Variables for Program Use 
 #-----------------------------------------------------------------------
-use vars qw(@parse_record %quick_parse @us_phone @us_ssan 
-	    @MM_DD_YYYY @MM_DD_YY @YY_MM_DD @YYYY_MM_DD);
-@parse_record=();
+use vars qw(%quick_parse @us_phone @us_ssan 
+	    @MM_DD_YYYY @MM_DD_YY @YY_MM_DD @YYYY_MM_DD
+	    $OD $CD $TRACE
+	    );
+$TRACE = 1;
+$OD = '<*<';
+$CD = '>*>';
 
 %quick_parse =
 (
@@ -29,24 +33,17 @@ use vars qw(@parse_record %quick_parse @us_phone @us_ssan
  YY_MM_DD   => \@Parse::FixedLength::YY_MM_DD,
  YYYY_MM_DD => \@Parse::FixedLength::YYYY_MM_DD
 );
-#=======================================================================
-
-sub print_parsed {
-    map { print "$_\n" } (@parse_record);
-}
 
 
 #=======================================================================
 sub parse {
-    my ($string_to_parse, $hash_ref, $parse_instruction_ref,$debug) = @_;
+    my ($string_to_parse, $hash_ref, $parse_instruction_ref) = @_;
     my $offset=0;
     my $parse_record;
     my $parsed_string;
 
-    warn Data::Dumper->Dump([\@_],['Parse::FL::parse::@_']) if $debug;
-
-    $parse_record="Parsed [$string_to_parse]: ";
-
+    warn "Parsing $OD$string_to_parse$CD" if $TRACE;
+   
     foreach my $parse_instruction (@{$parse_instruction_ref}) {
 	for (keys %{$parse_instruction}) {
 #	    print $_, " ", $parse_instruction->{$_},$/;
@@ -54,20 +51,11 @@ sub parse {
 	    $parsed_string=substr($string_to_parse, $offset, $length);
 	    $hash_ref->{$_}=$parsed_string;
 	    $offset += $length;
-	    $parse_record .= "\n\t/$_/ $parsed_string";
-	    push @parse_record, $parse_record;
+	    warn "$OD$_$CD parsed to $OD$parsed_string$CD" if $TRACE;
 	}
     }
 
-    my $debug_string;
-    if ($debug) {
-      foreach my $parse_instruction (@{$parse_instruction_ref}) {
-	my $key = (keys %$parse_instruction)[0];
-	my $val = $hash_ref->{$key};
-	$debug_string .= "$key => $val\n";
-      }
-      warn $debug_string;
-    }
+    
 
     $hash_ref;
 
@@ -143,15 +131,17 @@ component parts
 
 =head1 SYNOPSIS
 
-    use Parse::FixedLength;
+ use Parse::FixedLength;
+
+ $Parse::FixedLength::TRACE = 1; # default - print parse of each rec
     
     $phone_number=8037814191;
     parse($phone_number,
 	     \%moms_phone, 
 	     [ 
-	       {'area_code' => 3},
-	       {'exchange'  => 3},
-	       {'number'    => 4} ] );
+	       { area_code => 3 } ,
+	       { exchange  => 3 } ,
+	       { number    => 4 } ] );
 
     for (keys %moms_phone) {
       print $_, " ", $moms_phone{$_}, $/;
@@ -186,17 +176,18 @@ reference passed in.
 
 =item quick_parse()
 
+ quick_parse($string_to_parse, $href_storing_parse, $name_of_common_string)
+
 To facilitate the parsing of certain common fixed-length strings, the
-C<quick_parse()> function takes the name of an LOH (list of hashes) 
-containing formatting information, a string, and a reference to a hah in 
-which to store parsing results. The currently available formatting routines
-are:
+C<quick_parse()> function takes a string, a reference to a hash in 
+which to store parsing results, and the name of the common string
+(which indexes into the %quick_parse hash to find formatting instructions).
+The currently available formatting routines are:
 
 =item * C<@us_phone> 
 
  $phone_number=8882221234;
- Parse::FixedLength::quick_parse("us_phone",$phone_number, \%lncs_phone);
-
+ Parse::FixedLength::quick_parse($phone_number, \%lncs_phone, "us_phone");
 
 =item * C<@us_ssan> 
 
@@ -208,26 +199,28 @@ are:
 
 =item * C<@YYYY_MM_DD> 
 
-=item print_parsed()
-
-This routine can be called after parsing to print a record of parse results.
-
-
-
 =back
 
-=cut
+=head1 IMPORTANT
+
+Be sure to watch for odd records in your input. The following example does
+not parse lines which only consist of whitespace.
+
+ open D, 'data.dat';
+
+ my %parse;
+ while (<D>) {
+    next if /^\s*$/;
+
+    parse($_, \%parse, [
+			{ three => 3 },
+			{ '3mo' => 3 },
+			{ 'mo3' => 3 },
+			{ 'end' => 3 }
+			]);
+ }
 
 
-#=======================================================================
-
-
-
-#-----------------------------------------------------------------------
-
-=head1 EXAMPLES
-
-see SYNOPSIS
 
 =head1 AUTHOR
 
@@ -237,5 +230,11 @@ Terrence Brannon <tbone@cpan.org>
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
+
+
+=head1 NOTES
+
+Version 4.1 fixes a memory leak reported by bitwise of Perlmonks.org and
+fixed by runrig of Perlmonks. I am princepawn of Perlmonks, by the way.
 
 =cut
