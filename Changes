@@ -1,5 +1,10 @@
 Revision history for Perl extension Parse::FixedLength.
-5.04  Tue Jul 24 Later in the day...
+5.06  Wed Jul 25 10:18:57 PDT 2001
+    - Added dump() method.
+    - Separated converter objects from parser objects to make a better
+      cleaner OO universe.
+    - Cleaned up docs, added examples.
+5.05  Tue Jul 24 Later in the day...
     - For right justification, if the new format is shorter than the data,
       we need to trim leading 'pad' characters, not just whitespace.
 5.04  Tue Jul 24 12:31:35 PDT 2001
