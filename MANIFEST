@@ -1,7 +1,6 @@
 Changes
 FixedLength.pm
 MANIFEST
-Makefile
 Makefile.PL
 README
 t/alllengths.t

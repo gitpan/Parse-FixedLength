@@ -1,4 +1,7 @@
 Revision history for Perl extension Parse::FixedLength.
+5.31  Tue Jun 8 17:00:00  2004
+    - To autoload an lvalue method, AUTOLOAD must be
+      declared as an lvalue method.
 5.30  Fri Apr 16 17:00:00  2004
     - Took out Makefile.PL code for changing name of test
       module (see if it shows up on CPAN).

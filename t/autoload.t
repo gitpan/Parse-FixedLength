@@ -6,7 +6,7 @@
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-BEGIN { $| = 1; print "1..5\n"; }
+BEGIN { $| = 1; print "1..6\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use Parse::FixedLength;
 $loaded = 1;
@@ -37,3 +37,7 @@ print "ok 4\n";
 $href->first_name = 'Fred';
 print $not unless $href->first_name eq 'Fred';
 print "ok 5\n";
+
+$href->address = 'abcdef';
+print $not unless $href->address eq 'abcdef';
+print "ok 6\n";

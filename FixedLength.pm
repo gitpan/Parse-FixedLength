@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.30';
+$VERSION   = '5.31';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -378,7 +378,7 @@ package Parse::FixedLength::HashAsObj;
 use vars qw($AUTOLOAD);
 sub DESTROY { 1 }
 
-sub AUTOLOAD {
+sub AUTOLOAD : lvalue {
   no strict 'refs';
   my ( $class, $method ) = $AUTOLOAD =~ /^(.*)::(.+)$/
     or Carp::croak "Invalid call to $AUTOLOAD";
@@ -393,6 +393,9 @@ sub AUTOLOAD {
     $self->{$method};
   };
   goto &$AUTOLOAD;
+  # To placate the compiler you must appear
+  # to return an lvalue-able value
+  $Parse::FixedLength::HashAsObj::foo;
 }
 1;
 __END__
