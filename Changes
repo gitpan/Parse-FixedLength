@@ -1,5 +1,7 @@
 Revision history for Perl extension Parse::FixedLength.
-5.27  Thu Apr 15 17:00:00  2004
+5.29  Thu Apr 15 17:00:00  2004
+    - Doc glitch fix.
+5.28  Thu Apr 15 17:00:00  2004
     - Any single parser will return the same hash ref on every
       call to parse(). See Caveats.
     - Return blessed hash ref object from parse().

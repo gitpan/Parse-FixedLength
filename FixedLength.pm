@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG $HASH_CLASS);
-$VERSION   = '5.28';
+$VERSION   = '5.29';
 $DELIM = ":";
 $DEBUG = 0;
 $HASH_CLASS = __PACKAGE__ . "::HashAsObj";
@@ -497,6 +497,7 @@ DELIM may also be used.
 (default: ":")
 
 =item no_bless
+
 Do not bless the hash ref returned from the parse method into
 a Hash-As-Object package.
 (default: false)
@@ -823,6 +824,6 @@ L<Text::FixedLength|Text::FixedLength>, L<Data::FixedFormat|Data::FixedFormat>,
 L<AnyData::Format::Fixed|AnyData::Format::Fixed> (although
 the AnyData module is part of a larger collection of modules which
 facilitates converting data between many different kinds of formats, and
-through DBD::AnyData, using SQL to query those data sources).
+using SQL to query those data sources via L<DBD::AnyData|DBD::AnyData>).
 
 =cut
