@@ -1,43 +1,20 @@
-#!/usr/bin/perl
+# Before `make install' is performed this script should be runnable with
+# `make test'. After `make install' it should work as `perl test.pl'
 
-use lib '/usr/end70/mnt/admin/perl';
+######################### We start with some black magic to print on failure.
+
+# Change 1..1 below to 1..last_test_to_print .
+# (It may become useful if the test is moved to ./t subdirectory.)
+
+BEGIN { $| = 1; print "1..1\n"; }
+END {print "not ok 1\n" unless $loaded;}
 use Parse::FixedLength;
-use Parse::FixedDelimiter;
+$loaded = 1;
+print "ok 1\n";
 
-$phone_number=4152841111;
-Parse::FixedLength::parse($phone_number,
-	 \%moms_phone, 
-	 [ 
-	   {'area_code' => 3},
-	   {'exchange'  => 3},
-	   {'number',   => 4} ] );
+######################### End of black magic.
 
-
-$phone_number=8882221234;
-Parse::FixedLength::quick_parse("us_phone",$phone_number, \%lncs_phone);
-
-$ssan=247259666;
-quick_parse("us_ssan",$ssan, \%bobos_ssan);
-
-Parse::FixedLength::print_parsed;
-
-$phone_number="412-284-1111";
-Parse::FixedDelimiter::parse($phone_number,\%jimbob, '-', [ 'area_code', 'exchange', 'number' ]);
-
-$phone_number="222-333-4444";
-Parse::FixedDelimiter::quick_parse("us_phone",$phone_number,\%big_guy);
-
-foreach (keys %jimbob) {
-    print "$_\t$jimbob{$_}\n";
-}
-
-Parse::FixedDelimiter::print_parsed;
-
-foreach (keys %jimbob) {
-    print "$_\t$jimbob{$_}\n";
-}
-
-foreach (keys %big_guy) {
-    print "$_\t$big_guy{$_}\n";
-}
+# Insert your test code below (better if it prints "ok 13"
+# (correspondingly "not ok 13") depending on the success of chunk 13
+# of the test code):
 

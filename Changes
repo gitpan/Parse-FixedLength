@@ -1,0 +1,6 @@
+Revision history for Perl extension Parse::FixedLength.
+
+0.01  Thu Nov 16 13:41:21 2000
+	- original version; created by h2xs 1.20 with options
+		-A -X -n Parse::FixedLength
+

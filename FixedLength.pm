@@ -1,6 +1,127 @@
-#-----------------------------------------------------------------------
-# $Header: /usr/end70/mnt/admin/perl/Parse/Parse/FixedLength.pm,v 1.25 1999/12/09 02:22:52 end70 Exp $
+package Parse::FixedLength;
+use strict;
 
+
+require Exporter;
+use Carp;
+
+#-----------------------------------------------------------------------
+#	Public Global Variables
+#-----------------------------------------------------------------------
+use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
+$VERSION   = '1.1';
+@ISA       = qw(Exporter);
+@EXPORT    = qw(parse print_parsed quick_parse);
+
+#-----------------------------------------------------------------------
+#	Global Variables for Program Use 
+#-----------------------------------------------------------------------
+our @parse_record=();
+
+our %quick_parse =
+(
+ us_phone   => \@Parse::FixedLength::us_phone,
+ us_ssan    => \@Parse::FixedLength::us_ssan,
+ MM_DD_YYYY => \@Parse::FixedLength::MM_DD_YYYY,
+ MM_DD_YY   => \@Parse::FixedLength::MM_DD_YY,
+ YY_MM_DD   => \@Parse::FixedLength::YY_MM_DD,
+ YYYY_MM_DD => \@Parse::FixedLength::YYYY_MM_DD
+);
+#=======================================================================
+
+sub print_parsed {
+    map { print "$_\n" } (@parse_record);
+}
+
+
+#=======================================================================
+sub parse {
+    my ($string_to_parse, $hash_ref, $parse_instruction_ref) = @_;
+    my $offset=0;
+    my $parse_record;
+    my $parsed_string;
+
+    $parse_record="Parsed [$string_to_parse]: ";
+
+    foreach my $parse_instruction (@{$parse_instruction_ref}) {
+	for (keys %{$parse_instruction}) {
+#	    print $_, " ", $parse_instruction->{$_},$/;
+	    my $length=$parse_instruction->{$_};
+	    $parsed_string=substr($string_to_parse, $offset, $length), $/;
+	    $hash_ref->{$_}=$parsed_string;
+	    $offset += $length;
+	    $parse_record .= "\n\t/$_/ $parsed_string";
+	    push @parse_record, $parse_record;
+	}
+    }
+
+
+
+}
+
+#=======================================================================
+
+
+sub quick_parse {
+    my ($name_of_formatting_LOH, $string_to_parse, $hash_ref) = @_;
+    my $offset=0;
+    
+    parse(
+	  $string_to_parse,
+	  $hash_ref,
+	  $quick_parse{$name_of_formatting_LOH}
+	 )
+      ;
+}
+
+#=======================================================================
+
+
+#-----------------------------------------------------------------------
+
+#=======================================================================
+# initialisation code - stuff the DATA into the CODES hash
+#=======================================================================
+{
+our @us_phone= ( 
+	     {'area_code' => 3},
+	     {'exchange'  => 3},
+	     {'number'    => 4} 
+	     );
+
+our @us_ssan= ( 
+	     {'A' =>  3},
+	     {'B' =>  2},
+	     {'C' =>  4} 
+	     );
+
+our @MM_DD_YYYY= ( 
+	     {'month' =>  2},
+	     {'day'   =>  2},
+	     {'year'  =>  4} 
+	     );
+
+our @MM_DD_YY= ( 
+	     {'month' =>  2},
+	     {'day'   =>  2},
+	     {'year'  =>  2} 
+	     );
+
+our @YY_MM_DD= ( 
+	     {'year'  =>  2},
+	     {'day'   =>  2},
+	     {'month'  =>  2} 
+	     );
+
+our @YYYY_MM_DD= ( 
+	     {'year'  =>  4},
+	     {'month'   =>  2},
+	     {'day'  =>  2} 
+	     );
+
+}
+
+1;
 =head1 NAME
 
 Parse::FixedLength - parse a string containing fixed length fields into
@@ -11,7 +132,7 @@ component parts
     use Parse::FixedLength;
     
     $phone_number=8037814191;
-    parse_FL($phone_number,
+    parse($phone_number,
 	     \%moms_phone, 
 	     [ 
 	       {'area_code' => 3},
@@ -30,13 +151,6 @@ component parts
     
 =cut
 
-#-----------------------------------------------------------------------
-
-package Parse::FixedLength;
-#use strict;
-
-#-----------------------------------------------------------------------
-
 =head1 DESCRIPTION
 
 The C<Parse::FixedLength> module facilitates the process of breaking
@@ -44,34 +158,13 @@ a string into its fixed-length components.
 
 =cut
 
-#-----------------------------------------------------------------------
-
-require Exporter;
-use Carp;
-
-#-----------------------------------------------------------------------
-#	Public Global Variables
-#-----------------------------------------------------------------------
-use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
-$VERSION   = '1.00';
-@ISA       = qw(Exporter);
-@EXPORT    = qw(quick_parse);
-
-#-----------------------------------------------------------------------
-#	Global Variables for Program Use 
-#-----------------------------------------------------------------------
-@parse_record=();
-
-
-#=======================================================================
-
 =head1 PARSING ROUTINES
 
-There is one parsing routine: C<parse()>.
+=over 4
 
-=over 8
+=item parse() 
 
-=item parse()
+ parse($string_to_parse, $href_storing_parse, $LOH_parse_instructions)
 
 This function takes a string, a reference to a hash and a reference to a 
 list of hashes and stores the results of fixed length parsing into the hash 
@@ -85,70 +178,34 @@ containing formatting information, a string, and a reference to a hah in
 which to store parsing results. The currently available formatting routines
 are:
 
-=over 4
-item * C<@us_phone> 
-item * C<@us_ssan> 
-item * C<@us_dob> 
-item * C<@us_dob_long_year> 
+=item * C<@us_phone> 
 
-=back
+ $phone_number=8882221234;
+ Parse::FixedLength::quick_parse("us_phone",$phone_number, \%lncs_phone);
 
-=cut
 
-#=======================================================================
-sub parse {
-    my ($string_to_parse, $hash_ref, $parse_instruction_ref) = @_;
-    my $offset=0;
-    my $parse_record;
-    my $parsed_string;
+=item * C<@us_ssan> 
 
-    $parse_record="Parsed [$string_to_parse]: ";
+=item * C<@MM_DD_YYYY> 
 
-    foreach $parse_instruction (@{$parse_instruction_ref}) {
-	for (keys %{$parse_instruction}) {
-#	    print $_, " ", $parse_instruction->{$_},$/;
-	    my $length=$parse_instruction->{$_};
-	    $parsed_string=substr($string_to_parse, $offset, $length), $/;
-	    $hash_ref->{$_}=$parsed_string;
-	    $offset += $length;
-	    $parse_record .= "\n\t/$_/ $parsed_string";
-	    add_to_parse_record;
-	}
-    }
+=item * C<@MM_DD_YY> 
 
-    push @parse_record, $parse_record;
+=item * C<@YY_MM_DD> 
 
-}
-
-#=======================================================================
-sub quick_parse {
-    my ($name_of_formatting_LOH, $string_to_parse, $hash_ref) = @_;
-    my $offset=0;
-    
-    parse($string_to_parse,
-	     $hash_ref,
-	     \@{$name_of_formatting_LOH});
-}
-
-#=======================================================================
-
-=head1 DIAGNOSTIC ROUTINES
-
-There is one diagnostic routine: C<print_parsed()>.
-
-=over 8
+=item * C<@YYYY_MM_DD> 
 
 =item print_parsed()
 
-This function prints all parses performed.
+This routine can be called after parsing to print a record of parse results.
+
+
 
 =back
+
 =cut
 
+
 #=======================================================================
-sub print_parsed {
-    map { print "$_\n" } (@parse_record);
-}
 
 
 
@@ -160,59 +217,11 @@ see SYNOPSIS
 
 =head1 AUTHOR
 
-Terrence Brannon E<lt>tbrannon@end70.comE<gt>
+Terrence Brannon <tbone@cpan.org>
 
 =head1 COPYRIGHT
-
-Copyright (c) 1999 End70 Corporation
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 
 =cut
-
-#-----------------------------------------------------------------------
-
-#=======================================================================
-# initialisation code - stuff the DATA into the CODES hash
-#=======================================================================
-{
-@us_phone= ( 
-	     {'area_code' => 3},
-	     {'exchange'  => 3},
-	     {'number'    => 4} 
-	     );
-
-@us_ssan= ( 
-	     {'A' =>  3},
-	     {'B' =>  2},
-	     {'C' =>  4} 
-	     );
-
-@MM_DD_YYYY= ( 
-	     {'month' =>  2},
-	     {'day'   =>  2},
-	     {'year'  =>  4} 
-	     );
-
-@MM_DD_YY= ( 
-	     {'month' =>  2},
-	     {'day'   =>  2},
-	     {'year'  =>  2} 
-	     );
-
-@YY_MM_DD= ( 
-	     {'year'  =>  2},
-	     {'day'   =>  2},
-	     {'month'  =>  2} 
-	     );
-
-@YYYY_MM_DD= ( 
-	     {'year'  =>  4},
-	     {'month'   =>  2},
-	     {'day'  =>  2} 
-	     );
-
-}
-
-1;
