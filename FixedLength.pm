@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.16';
+$VERSION   = '5.17';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -201,12 +201,12 @@ sub dumper {
     my $jfields = $parser->{JFIELDS} || {};
     for my $name (@{$parser->names}) {
         my $len = $parser->length($name);
+        $end = $start + $len - 1;
         my $just = exists $jfields->{$name}
           ? $jfields->{$name} eq ' ' ? 'R' : "R$jfields->{$name}"
           : '';
         $len .= $just;
         $len = qq('$len') if $just and ($parser->{IS_HSH} or $pos_comment);
-        $end = $start + $len - 1;
         $layout .= $format->($name, $len, $start, $end) . "\n";
         $start = $end + 1;
     }
