@@ -5,11 +5,13 @@ use strict;
 require Exporter;
 use Carp;
 
+our $debug = 1;
+
 #-----------------------------------------------------------------------
 #	Public Global Variables
 #-----------------------------------------------------------------------
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
-$VERSION   = '1.1';
+$VERSION   = '3.1';
 @ISA       = qw(Exporter);
 @EXPORT    = qw(parse print_parsed quick_parse);
 
@@ -36,10 +38,12 @@ sub print_parsed {
 
 #=======================================================================
 sub parse {
-    my ($string_to_parse, $hash_ref, $parse_instruction_ref) = @_;
+    my ($string_to_parse, $hash_ref, $parse_instruction_ref,$debug) = @_;
     my $offset=0;
     my $parse_record;
     my $parsed_string;
+
+    warn Data::Dumper->Dump([\@_],['Parse::FL::parse::@_']) if $debug;
 
     $parse_record="Parsed [$string_to_parse]: ";
 
@@ -55,7 +59,17 @@ sub parse {
 	}
     }
 
+    my $debug_string;
+    if ($debug) {
+      foreach my $parse_instruction (@{$parse_instruction_ref}) {
+	my $key = (keys %$parse_instruction)[0];
+	my $val = $hash_ref->{$key};
+	$debug_string .= "$key => $val\n";
+      }
+      warn $debug_string;
+    }
 
+    $hash_ref;
 
 }
 
