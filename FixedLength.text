@@ -1,0 +1,74 @@
+NAME
+    Parse::FixedLength - parse a string containing fixed length fields into
+    component parts
+
+SYNOPSIS
+        use Parse::FixedLength;
+        
+        $phone_number=8037814191;
+        parse_FL($phone_number,
+                 \%moms_phone, 
+                 [ 
+                   {'area_code' => 3},
+                   {'exchange'  => 3},
+                   {'number'    => 4} ] );
+
+        for (keys %moms_phone) {
+          print $_, " ", $moms_phone{$_}, $/;
+        }
+
+        # yields $moms_phone{area_code} == 803
+        #        $moms_phone{exchange}  == 781
+        #        $moms_phone{number}    == 4191
+
+        
+    =cut
+
+    #-----------------------------------------------------------------------
+
+    package Parse::FixedLength; #use strict;
+
+    #-----------------------------------------------------------------------
+
+DESCRIPTION
+    The `Parse::FixedLength' module facilitates the process of breaking a
+    string into its fixed-length components.
+
+PARSING ROUTINES
+    There is one parsing routine: `parse()'.
+
+    parse() This function takes a string, a reference to a hash and a reference
+            to a list of hashes and stores the results of fixed length
+            parsing into the hash reference passed in.
+
+    quick_parse()
+            To facilitate the parsing of certain common fixed-length
+            strings, the `quick_parse()' function takes the name of an LOH
+            (list of hashes) containing formatting information, a string,
+            and a reference to a hah in which to store parsing results. The
+            currently available formatting routines are:
+
+DIAGNOSTIC ROUTINES
+            There is one diagnostic routine: `print_parsed()'.
+
+    print_parsed()  This function prints all parses performed.
+
+            #===============================================================
+            ======== sub print_parsed { map { print "$_\n" }
+            (@parse_record); }
+
+            #---------------------------------------------------------------
+            --------
+
+EXAMPLES
+            see SYNOPSIS
+
+AUTHOR
+            Terrence Brannon <tbrannon@end70.com>
+
+COPYRIGHT
+            Copyright (c) 1999 End70 Corporation
+
+            This module is free software; you can redistribute it and/or
+            modify it under the same terms as Perl itself.
+
