@@ -5,8 +5,9 @@ use strict;
 #-----------------------------------------------------------------------
 #	Public Global Variables
 #-----------------------------------------------------------------------
-use vars qw($VERSION);
-$VERSION   = '5.06';
+use vars qw($VERSION $DEBUG);
+$VERSION   = '5.07';
+$DEBUG = 0;
 
 #=======================================================================
 sub new {
@@ -42,8 +43,8 @@ sub new {
         }
     }
     $self->{NAMES} = \@names;
-    $self->{UNPACK} = join '', map { "$spaces$_" } @lengths;
-    $self->{PACK} = join '', map { "A$_" } @lengths;
+    $self->{PACK} = $self->{UNPACK} = join '', map { "$spaces$_" } @lengths;
+    $self->{PACK} = join '', map { "A$_" } @lengths if $spaces eq 'a';
     $self->{LENGTH} = $length;
     if (%justify and ! $params->{'no_justify'}) {
      $self->{JUST} = 1;
@@ -52,7 +53,7 @@ sub new {
     my %lengths;
     @lengths{@names} = @lengths;
     $self->{LENGTHS} = \%lengths;
-    $self->{DEBUG} = 1 if $params->{'debug'};
+    $self->{DEBUG} = (exists $$params{'debug'})? $params->{'debug'} : $DEBUG;
     $self;
 }
 
@@ -72,6 +73,7 @@ sub parse {
     my $parser = shift;
     my @parsed = unpack($parser->{UNPACK}, shift);
     if ($parser->{DEBUG}) {
+     print "# Debug parse\n";
      for my $i (0..$#{$parser->{NAMES}}) {
          print "[$parser->{NAMES}[$i]][$parsed[$i]]\n";
      }
@@ -93,6 +95,14 @@ sub pack {
             my $len = $parser->length($name);
             $$href{$name} = $chr x ($len-length($field)) . $field;
         }
+    }
+    # Print debug output after justifying fields
+    if ($parser->{DEBUG}) {
+     print "# Debug pack\n";
+     for my $name (@{$parser->{NAMES}}) {
+         print "[$name][$$href{$name}]\n";
+     }
+     print "\n";
     }
     CORE::pack $parser->{PACK}, @$href{@{$parser->{NAMES}}};
 }
@@ -133,7 +143,7 @@ package Parse::FixedLength::Converter;
 
 #=======================================================================
 sub new {
-   # Do the OO cargo cult constructor dance
+   # Do the OO cargo cult construction thing
    my $proto = shift;
    my $class = ref($proto) || $proto;
    my $self = bless {}, $class;
@@ -141,20 +151,23 @@ sub new {
    my ($parser1, $parser2, $mappings, $defaults) = @_;
    $self->{UNPACKER} = $parser1;
    $self->{PACKER} = $parser2;
-   $self->{MAP} = { reverse %$mappings };
+   $self->{MAP} = UNIVERSAL::isa($mappings,'HASH')
+       ? { reverse %$mappings }
+       : { reverse @$mappings };
    $self->{DEFAULTS} = $defaults;
    $self;
 }
 #=======================================================================
 sub convert {
     my $converter = shift;
-    my $data = shift;
+    my $data_in   = shift;
     my $unpacker = $converter->{UNPACKER};
     my $packer   = $converter->{PACKER};
     my $map_to   = $converter->{MAP};
     my $defaults = $converter->{DEFAULTS};
 
-    my $data_in   = $unpacker->parse($data);
+    $data_in = $unpacker->parse($data_in)
+        unless UNIVERSAL::isa($data_in, 'HASH');
     my $names_out = $packer->names;
 
     # Map the data from input to output
@@ -191,7 +204,9 @@ Parse::FixedLength - parse an ascii string containing fixed length fields into c
 
     $converter = $parser1->converter($parser2);
     $converter = $parser1->converter($parser2, \%mappings);
+    $converter = $parser1->converter($parser2, \@mappings);
     $converter = $parser1->converter($parser2, \%mappings, \%defaults);
+    $converter = $parser1->converter($parser2, \@mappings, \%defaults);
 
     $data_out = $converter->convert($data_in);
 
@@ -264,7 +279,7 @@ fixed length parsing as a hash reference of field names and
 values if called in scalar context, or just a list of the
 values if called in list context.
 
-=item pack
+=item pack()
 
  $data = $parser->pack(\%data_to_pack);
 
@@ -316,8 +331,10 @@ of all the fields (starting with position 1). E.g.:
 =item converter()
 
  $converter = $parser1->converter($parser2);
- $converter = $parser1->converter($parser2, \%mapping);
- $converter = $parser1->converter($parser2, \%mapping, \%defaults);
+ $converter = $parser1->converter($parser2, \%mappings);
+ $converter = $parser1->converter($parser2, \@mappings);
+ $converter = $parser1->converter($parser2, \%mappings, \%defaults);
+ $converter = $parser1->converter($parser2, \@mappings, \%defaults);
 
 Returns a format converting object. $parser1 is the parsing object
 to convert from, $parser2 is the parsing object to convert to.
@@ -326,7 +343,9 @@ By default, common field names will be mapped from one format to the other.
 Fields with different names can be mapped from the first format to the
 other (or you can override the default) using the second argument.
 The keys are the source field names and the corresponding values are
-the target field names.
+the target field names. This argument can be a hash ref or an array
+ref since you may want to map one source field to more than one
+target field.
 
 Defaults for any field in the target format can be supplied
 using the third argument, where the keys are the field names of
@@ -336,16 +355,17 @@ value (or the empty string if there was no mapping), and the
 second argument is the entire hash reference that results from parsing
 the data with the 'from' parser object. E.g. if you were mapping
 from a separate 'zip' and 'plus_4' field to a 'zip_plus_4' field,
-you could supply as one of the key/value pairs in the 'defaults' hash
-ref the following:
+you could map 'zip' to 'zip_plus_4' and then supply as one of the
+key/value pairs in the 'defaults' hash ref the following:
 
- zip => sub { shift() . $$_[1]{plus_4} }
+ zip_plus_4 => sub { shift() . $$_[1]{plus_4} }
 
 =item convert()
 
  $data_out = $converter->convert($data_in);
+ $data_out = $converter->convert(\%hash);
 
-Converts a string from one fixed length format to another.
+Converts a string or a hash reference from one fixed length format to another.
 
 =back
 
