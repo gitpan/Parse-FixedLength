@@ -6,9 +6,8 @@ use strict;
 #	Public Global Variables
 #-----------------------------------------------------------------------
 use Carp;
-use Scalar::Util qw(reftype);
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.15';
+$VERSION   = '5.16';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -19,15 +18,15 @@ sub new {
     my $class = ref($proto) || $proto;
     my $self = bless {}, $class;
     my $format = shift;
-    croak "Format argument not an array ref"
-        unless (reftype($format) || '') eq 'ARRAY';
+    confess "Format argument not an array ref"
+        unless UNIVERSAL::isa($format, 'ARRAY');
     my $params = shift;
-    croak "Params argument not a hash ref"
-        if $params and (reftype($params) || '') eq 'ARRAY';
+    confess "Params argument not a hash ref"
+        if defined $params and ! UNIVERSAL::isa($params, 'HASH');
     my $delim = exists $params->{'delim'} ? $params->{'delim'} : $DELIM;
     $self->{DELIM} = $delim;
     my $delim_re = qr/\Q$delim/;
-    croak "Delimiter argument must be one character" unless length($delim)==1;
+    confess "Delimiter argument must be one character" unless length($delim)==1;
     my $spaces = $params->{'spaces'} ? 'a' : 'A';
     my $is_hsh = $self->{IS_HSH} = _chk_format_type($format, $delim_re);
 
@@ -60,13 +59,13 @@ sub new {
 sub _chk_format_type {
     my ($format, $delim) = @_;
     my $is_hsh = 1 unless $$format[0] =~ $delim;
-    croak "Odd number of name/length pairs or missing delimiter on first field"
+    confess"Odd number of name/length pairs or missing delimiter on first field"
         if $is_hsh and @$format % 2;
     for my $i (0..$#$format) {
         my $field = $$format[$i];
         if ($field =~ $delim) {
-            croak "Field $field contains delimiter" if $is_hsh and not $i % 2;
-        } else { croak "Field $field is missing delimiter" unless $is_hsh }
+            confess "Field $field contains delimiter" if $is_hsh and not $i % 2;
+        } else { confess "Field $field is missing delimiter" unless $is_hsh }
     }
     return $is_hsh;
 }
@@ -77,7 +76,7 @@ sub _parse_format {
     my $dups_ok = $$params{autonum};
     my $all_dups_ok;
     if ($dups_ok) {
-        if ((reftype($dups_ok) || '') eq 'ARRAY') {
+        if (UNIVERSAL::isa($dups_ok, 'ARRAY')) {
             @dups{@$dups_ok} = undef;
         } else { $all_dups_ok = 1 }
     }
@@ -93,8 +92,8 @@ sub _parse_format {
         # The results of the inner-parens is not guaranteed unless the
         # outer parens match, so we do it this way
         my ($len, $is_just, $chr) = $tmp_len =~ /^(\d+)((?:R(.?))?)$/
-            or croak "Bad length $tmp_len for field $name";
-        $len > 0 or croak "Length must be > 0 for field $name";
+            or confess "Bad length $tmp_len for field $name";
+        $len > 0 or confess "Length must be > 0 for field $name";
         $justify{$name} = ($chr eq '') ? ' ' : $chr if $is_just;
         $lengths{$name} = $len;
         push @lengths, $len;
@@ -109,13 +108,13 @@ sub _parse_format {
 sub _chk_dups {
     my ($name, $names, $lengths, $justify, $dups, $dups_ok, $all_dups_ok) = @_;
     if (exists $$lengths{$name}) {
-        croak "Duplicate field $name in format" 
+        confess "Duplicate field $name in format" 
             if !$dups_ok or !$all_dups_ok && !exists $$dups{$name};
     } else { return $name unless $$dups{$name} }
     # If this is the first duplicate found, fix the previous field
     unless ($$dups{$name}) {
         my $new_name = "${name}_".++$$dups{$name};
-        croak "Can't autonumber field $name" if exists $$lengths{$new_name};
+        confess "Can't autonumber field $name" if exists $$lengths{$new_name};
         for (@$names) { $_ = $new_name if $_ eq $name }
         $$lengths{$new_name} = $$lengths{$name};
         delete $$lengths{$name};
@@ -130,11 +129,11 @@ sub _chk_dups {
 sub _chk_start_end {
     my ($name, $prev, $start, $end) = @_;
     if (defined $start) {
-        $start =~ /^\d+$/ or croak "Start position not a number in field $name";
-        $start == $prev   or croak "Bad start position in field $name";
-        defined $end      or croak "End position missing in field $name";
-        $end =~ /^\d+$/   or croak "End position not a number in field $name";
-        $end < $start    and croak "End position < start in field $name";
+        $start=~/^\d+$/ or confess "Start position not a number in field $name";
+        $start == $prev or confess "Bad start position in field $name";
+        defined $end    or confess "End position missing in field $name";
+        $end =~ /^\d+$/ or confess "End position not a number in field $name";
+        $end < $start  and confess "End position < start in field $name";
     }
 }
 #=======================================================================
@@ -220,34 +219,35 @@ sub converter {
 
 package Parse::FixedLength::Converter;
 use Carp;
-use Scalar::Util qw(reftype);
 
 #=======================================================================
 sub new {
-   # Do the OO cargo cult construction thing
-   my $proto = shift;
-   my $class = ref($proto) || $proto;
-   my $self = bless {}, $class;
+    # Do the OO cargo cult construction thing
+    my $proto = shift;
+    my $class = ref($proto) || $proto;
+    my $self = bless {}, $class;
 
-   my ($parser1, $parser2, $mappings, $defaults, $parms) = @_;
-   $self->{UNPACKER} = $parser1;
-   $self->{PACKER} = $parser2;
-   my $type = reftype($mappings) || '';
-   croak 'Map arg not a hash or array ref' unless $type =~ /^(HASH|ARRAY)$/;
-   $self->{MAP} = { reverse $type eq 'HASH' ? %$mappings : @$mappings };
-   croak 'Defaults arg not a hash ref'
-     unless (reftype($defaults) || '') eq 'HASH';
-   my ($consts, $crefs) = ({}, {});
-   while (my ($field, $default) = each %$defaults) {
-       my $rtype = reftype($default);
-       croak 'Default for field $field not a constant or code ref'
-           unless (!defined $rtype or $rtype eq 'CODE');
-       (defined $rtype ? $$crefs{$field} : $$consts{$field}) = $default;
-   }
-   $self->{CONSTANTS} = $consts;
-   $self->{CODEREFS} = $crefs;
-   $self->{NOPACK} = 1 if $parms->{no_pack};
-   $self;
+    my ($parser1, $parser2, $mappings, $defaults, $parms) = @_;
+    $self->{UNPACKER} = $parser1;
+    $self->{PACKER}   = $parser2;
+    confess 'Map arg not a hash or array ref'
+        unless UNIVERSAL::isa($mappings, 'ARRAY')
+            or UNIVERSAL::isa($mappings, 'HASH');
+    $self->{MAP} = { reverse UNIVERSAL::isa($mappings, 'HASH')
+        ?  %$mappings : @$mappings
+    };
+    confess 'Defaults arg not a hash ref'
+      unless UNIVERSAL::isa($defaults, 'HASH');
+    my ($consts, $crefs) = ({}, {});
+    while (my ($field, $default) = each %$defaults) {
+        confess 'Default for field $field not a constant or code ref'
+            unless ! ref $default or UNIVERSAL::isa($default, 'CODE');
+        (ref $default ? $$crefs{$field} : $$consts{$field}) = $default;
+    }
+    $self->{CONSTANTS} = $consts;
+    $self->{CODEREFS} = $crefs;
+    $self->{NOPACK} = 1 if $parms->{no_pack};
+    $self;
 }
 #=======================================================================
 sub convert {
@@ -257,7 +257,7 @@ sub convert {
     my $map_to   = $converter->{MAP};
 
     $data_in = $converter->{UNPACKER}->parse($data_in)
-        unless (reftype($data_in) || '') eq 'HASH';
+        unless UNIVERSAL::isa($data_in, 'HASH');
     my $names_out = $packer->names;
 
     # Map the data from input to output
@@ -272,7 +272,7 @@ sub convert {
     }
     while (my ($name, $default) = each %{$converter->{CODEREFS}}) {
         $data_out{$name} = eval { $default->($data_out{$name}, $data_in) };
-        croak "Failed to default field $name: $@" if $@;
+        confess "Failed to default field $name: $@" if $@;
     }
     $converter->{NOPACK} ? \%data_out : $packer->pack(\%data_out);
 }

@@ -4,5 +4,5 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'         => 'Parse::FixedLength',
     'VERSION_FROM' => 'FixedLength.pm',
-    'PREREQ_PM'    => { Scalar::Util => 1.02 },
+    'PREREQ_PM'    => { },
 );
