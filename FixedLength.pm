@@ -6,10 +6,11 @@ use strict;
 #	Public Global Variables
 #-----------------------------------------------------------------------
 use vars qw($VERSION);
-$VERSION   = '5.01';
+$VERSION   = '5.02';
 
 #=======================================================================
 sub new {
+    # Do the cargo cult object creation
     my $proto = shift;
     my $class = ref($proto) || $proto;
     my $self = bless {}, $class;
@@ -18,21 +19,25 @@ sub new {
     my $delim = $params->{'delim'};
     my $spaces = $params->{'spaces'} ? 'a' : 'A';
     my (@names, @lengths);
+    my $length = 0;
     if (defined $delim) {
         for (@$format) {
             my ($name, $len) = split $delim;
             push @names, $name;
             push @lengths, $len;
+            $length += $len;
         }
     } else {
         for (my $i=0; $i < $#$format; $i+=2) {
             push @names, $$format[$i];
             push @lengths, $$format[$i+1];
+            $length += $$format[$i+1];
         }
     }
     $self->{NAMES} = \@names;
     $self->{UNPACK} = join '', map { "$spaces$_" } @lengths;
     $self->{PACK} = join '', map { "A$_" } @lengths;
+    $self->{LENGTH} = $length;
     $self->{DEBUG} = 1 if $params->{'debug'};
     $self;
 }
@@ -40,8 +45,7 @@ sub new {
 #=======================================================================
 sub parse {
     my $parser = shift;
-    my $string = shift;
-    my @parsed = unpack($parser->{UNPACK}, $string);
+    my @parsed = unpack($parser->{UNPACK}, shift);
     if ($parser->{DEBUG}) {
      for my $i (0..$#{$parser->{NAMES}}) {
          print "[$parser->{NAMES}[$i]][$parsed[$i]]\n";
@@ -56,12 +60,15 @@ sub parse {
 #=======================================================================
 sub pack {
     my $parser = shift;
-    my $data = shift;
-    pack $parser->{PACK}, @{$data}{@{$parser->{NAMES}}};
+    pack $parser->{PACK}, @{shift()}{@{$parser->{NAMES}}};
 }
 #=======================================================================
 sub names {
    shift->{NAMES};
+}
+#=======================================================================
+sub length {
+   shift->{LENGTH};
 }
 #=======================================================================
 
@@ -70,8 +77,7 @@ __END__
 
 =head1 NAME
 
-Parse::FixedLength - parse a string containing fixed length fields into
-component parts
+Parse::FixedLength - parse a string containing fixed length fields into component parts
 
 =head1 SYNOPSIS
 
@@ -147,25 +153,42 @@ Return an ordered arrayref of the field names.
 
 =cut
 
-
-#=======================================================================
-
-
-
-#-----------------------------------------------------------------------
-
 =head1 EXAMPLES
 
-see SYNOPSIS
+    use Parse::FixedLength;
+
+    my $parser = Parse::FixedLength->new([
+        first_name => 10,
+        last_name  => 10,
+        widgets_this_month => 5,
+    ]);
+
+    # Do a simple name casing of names
+    # and print widgets projected for the year for each person
+    # (Numbers are right justified for cut n paste purposes,
+    # but will end up left justified to simplify this example)
+    while (<DATA>) {
+        warn "No record terminator found!\n" unless chomp;
+        warn "Short Record!\n" unless $parser->length == length;
+        my $data = $parser->parse($_);
+        # See Lingua::EN::NameCase for a real attempt at name casing
+        s/(\w+)/\u\L$1/g for @$data{qw(first_name last_name)};
+        $data->{widgets_this_month} *= 12;
+        print $parser->pack($data), "\n";
+    }
+    __DATA__
+    BOB       JONES        24
+    JOHN      SMITH         5
+    JANE      DOE           7
 
 =head1 AUTHOR
 
- Douglas Wilson <dougw@cpan.org>,
+ Douglas Wilson <dougw@cpan.org>
  original by Terrence Brannon <tbone@cpan.org>
 
 =head1 COPYRIGHT
 
-This module is free software; you can redistribute it and/or
-modify it under the same terms as Perl itself.
+ This module is free software; you can redistribute it and/or
+ modify it under the same terms as Perl itself.
 
 =cut

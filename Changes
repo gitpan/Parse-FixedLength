@@ -1,5 +1,11 @@
 Revision history for Perl extension Parse::FixedLength.
+5.02  Thu Jun 28 08:04:27 PDT 2001
+    - Added length method and more examples, took out some temp variables to
+      tighten up code and obfuscate it a bit :)
 5.01  Wed Jun 27 12:06:00 PDT 2001
+    - Took up the original author's offer to rewrite this module, so I've no
+      idea what happened before this change, there were no other notes except
+      the 0.01 entry.
     - Changed to OO style, now uses unpack instead of substr for efficiency,
       removed some features (for now?) like the predefined parsing
       constants, but added others (like optionally returning a list
@@ -7,4 +13,3 @@ Revision history for Perl extension Parse::FixedLength.
 0.01  Thu Nov 16 13:41:21 2000
 	- original version; created by h2xs 1.20 with options
 		-A -X -n Parse::FixedLength
-
