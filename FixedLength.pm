@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.23';
+$VERSION   = '5.24';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -37,13 +37,21 @@ sub new {
     confess "Format argument not an array ref"
         unless UNIVERSAL::isa($format, 'ARRAY');
     my $self = bless {}, $class;
-    my $params = shift;
+    my $params = shift || {};
     confess "Params argument not a hash ref"
         if defined $params and ! UNIVERSAL::isa($params, 'HASH');
     my $delim = exists $params->{'delim'} ? $params->{'delim'} : $DELIM;
     $self->{DELIM} = $delim;
     my $delim_re = qr/\Q$delim/;
     confess "Delimiter argument must be one character" unless length($delim)==1;
+    if (exists $$params{all_lengths}) {
+        my $all = $$params{all_lengths};
+        confess "all_lengths must be a positive integer"
+            unless $all and $all =~ /^\d+$/ and $all > 0;
+        $format = [ map { local $_=$_; s/$delim_re.*//;
+                         "${_}${delim}$$params{all_lengths}"
+                        } @$format ];
+    }
     my $spaces = $params->{'spaces'} ? 'a' : 'A';
     my $is_hsh = $self->{IS_HSH} = _chk_format_type($format, $delim_re);
 
@@ -383,8 +391,15 @@ The optional second argument to new is a hash ref which may contain any of the f
          and after that any 'extra' fields are ignored.  The default
          delimiter is ":". The package variable DELIM may also be used.
 
+ all_lengths - This option ignores any lengths supplied in the format
+         argument (or allows having no length args in the format), and
+         sets the lengths for all the fields to this value. As well as
+         the obvious case where all formats are the same length, this can
+         help facilitate converting from a non-fixed length format (where
+         you just have field names) to a fixed-length format.
+
  autonum - This option controls the behavior of new() when duplicate
-         field names are found. Normally a fatal error will be
+         field names are found. By default a fatal error will be
          generated if duplicate field names are found. If you have,
          e.g., some unused filler fields, then as the value to this
          option, you can either supply an arrayref containing valid

@@ -1,4 +1,8 @@
 Revision history for Perl extension Parse::FixedLength.
+5.24  Wed Sep 19 17:00:00  2001
+    - Added all_lengths option to parser new() method.
+    - Changed subclass*.t tests so that the test module doesn't show up
+      on CPAN. Maybe I should just remove these tests?
 5.23  Fri Sep 14 18:00:00  2001
     - If no_pack was true for converter object, passing false to
       convert method was ignored. Added another test.

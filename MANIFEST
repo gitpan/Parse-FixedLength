@@ -3,7 +3,8 @@ FixedLength.pm
 MANIFEST
 README
 Makefile.PL
-t/lib/Parse/FixedLength/FLTest.pm
+t/lib/Parse/FixedLength/FLTest.pt
+t/alllengths.t
 t/autonum.t
 t/base.t
 t/convert.t

@@ -8,11 +8,27 @@
 
 BEGIN { $| = 1; print "1..7\n"; }
 END {print "not ok 1\n" unless $loaded;}
+
+BEGIN {
+    use File::Spec;
+    my @path = qw(Parse FixedLength);
+    my $old_file = "FLTest.pt";
+    my $new_file = "FLTest.pm";
+    for my $lib (["t","lib"], ["lib"]) {
+        my $dir = File::Spec->catdir(File::Spec->curdir, @$lib, @path);
+        my $old_file = File::Spec->catfile($dir, $old_file);
+        my $new_file = File::Spec->catfile($dir, $new_file);
+        rename $old_file, $new_file and last;
+    }
+eval <<EOT;
 # Include both relative directories so we can run
 # from either this OR parent directory
 use lib qw(t/lib lib);
-# Without import list
+# With import list
 use Parse::FixedLength;
+EOT
+    print "not " if $@;
+}
 $loaded = 1;
 print "ok 1\n";
 
