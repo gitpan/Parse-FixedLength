@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.21';
+$VERSION   = '5.22';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -269,8 +269,9 @@ sub new {
 sub convert {
     my $converter = shift;
     my $data_in   = shift;
-    my $packer   = $converter->{PACKER};
-    my $map_to   = $converter->{MAP};
+    my $no_pack   = @_ && shift || $converter->{NOPACK};
+    my $packer    = $converter->{PACKER};
+    my $map_to    = $converter->{MAP};
 
     $data_in = $converter->{UNPACKER}->parse($data_in)
         unless UNIVERSAL::isa($data_in, 'HASH');
@@ -290,7 +291,7 @@ sub convert {
         $data_out{$name} = eval { $default->($data_out{$name}, $data_in) };
         confess "Failed to default field $name: $@" if $@;
     }
-    $converter->{NOPACK} ? \%data_out : $packer->pack(\%data_out);
+    $no_pack ? \%data_out : $packer->pack(\%data_out);
 }
 
 1;
@@ -510,9 +511,12 @@ contain the following:
 =item convert()
 
  $data_out = $converter->convert($data_in);
+ $data_out = $converter->convert($data_in, $no_pack);
  $data_out = $converter->convert(\%hash);
+ $data_out = $converter->convert(\%hash, $no_pack);
 
 Converts a string or a hash reference from one fixed length format to another.
+If a second argument is supplied, it will override the converter's no_pack option setting.
 
 =back
 
