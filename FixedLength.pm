@@ -6,10 +6,11 @@ use strict;
 #	Public Global Variables
 #-----------------------------------------------------------------------
 use Carp;
-use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.27';
+use vars qw($VERSION $DELIM $DEBUG $HASH_CLASS);
+$VERSION   = '5.28';
 $DELIM = ":";
 $DEBUG = 0;
+$HASH_CLASS = __PACKAGE__ . "::HashAsObj";
 
 #=======================================================================
 sub import {
@@ -98,6 +99,12 @@ sub new {
     $self->{LENGTHS} = $hlengths;
     $self->{DEBUG} = exists $$params{'debug'} ?
         ref($$params{'debug'}) ? $$params{'debug'} : \*STDOUT : $DEBUG;
+
+    # Make slot to parse data into
+    my %data; @data{@{$self->names}} = undef;
+    $self->{DATA} = \%data;
+    $self->hash_to_obj($self->{DATA}) unless $params->{no_bless};
+
     $self;
 }
 
@@ -204,19 +211,18 @@ sub _trim_info {
 #=======================================================================
 sub parse {
     my $parser = shift;
-    my @parsed = unpack($parser->{UNPACK}, shift);
-    $parser->trim(@parsed) if $parser->{TRIM};
+    my $data = $parser->{DATA};
+    my $names = $parser->{NAMES};
+    @{$data}{@$names} = unpack($parser->{UNPACK}, $_[0]);
+    $parser->trim($data) if $parser->{TRIM};
     if (my $fh = $parser->{DEBUG}) {
      print $fh "# Debug parse\n";
-     for my $i (0..$#{$parser->{NAMES}}) {
-         print $fh "[$parser->{NAMES}[$i]][$parsed[$i]]\n";
+     for my $name (@$names) {
+         print $fh "[$name][$data->{$name}]\n";
      }
      print $fh "\n";
     }
-    return @parsed if wantarray;
-    my %parsed;
-    @parsed{@{$parser->{NAMES}}} = @parsed;
-    return \%parsed;
+    wantarray ? @$data{@$names} : $data;
 }
 #=======================================================================
 sub pack {
@@ -246,7 +252,8 @@ sub trim {
     my $self = shift;
     my $i;
     if (ref($_[0])) {
-        $$_{$_} =~ s/$self->{TPAD}[$i++]// for @{$self->{TNAMES}};
+        my $href = shift;
+        $href->{$_} =~ s/$self->{TPAD}[$i++]// for @{$self->{TNAMES}};
     } else {
         $_[$_] =~ s/$self->{TPAD}[$i++]// for @{$self->{TFIELDS}};
     }
@@ -257,6 +264,21 @@ sub names { shift->{NAMES} }
 sub length {
     my $self = shift;
     @_ ? $self->{LENGTHS}{$_[0]} : $self->{LENGTH};
+}
+#=======================================================================
+sub hash_to_obj {
+    my $self = shift;
+    my $href = shift;
+
+    no strict 'refs';
+    my $class_key = join "~=~", sort keys %$href;
+    my $class = ${"${HASH_CLASS}::classes"}{$class_key} || do {
+      my $cnt = ++${"${HASH_CLASS}::counter"};
+      my $name = ${"${HASH_CLASS}::classes"}{$class_key} = "Href$cnt";
+      @{"${HASH_CLASS}::${name}::ISA"} = $HASH_CLASS;
+      "${HASH_CLASS}::$name";
+    };
+    bless $href, $class;
 }
 #=======================================================================
 sub dumper {
@@ -350,6 +372,27 @@ sub convert {
     $no_pack ? \%data_out : $packer->pack(\%data_out);
 }
 
+package Parse::FixedLength::HashAsObj;
+
+use vars qw($AUTOLOAD);
+sub DESTROY { 1 }
+
+sub AUTOLOAD {
+  no strict 'refs';
+  my ( $class, $method ) = $AUTOLOAD =~ /^(.*)::(.+)$/
+    or Carp::croak "Invalid call to $AUTOLOAD";
+  Carp::croak "Can't locate object method $method via package $class"
+    unless exists $_[0]->{$method};
+  *$AUTOLOAD = sub : lvalue {
+    my $self = shift;
+    if (@_) {
+      $self->{$method} = shift;
+      return $self;
+    }
+    $self->{$method};
+  };
+  goto &$AUTOLOAD;
+}
 1;
 __END__
 
@@ -382,7 +425,10 @@ Parse::FixedLength - parse an ascii string containing fixed length fields into c
 =head1 DESCRIPTION
 
 The C<Parse::FixedLength> module facilitates the process of breaking
-a string into its fixed-length components.
+a string into its fixed-length components. Sure, it's a glorified
+(and in some ways more limited) substitute of the perl functions pack and
+unpack, but it's my belief that this module helps in the maintainability
+of working with fixed length formats as the number of fields in a format grows.
 
 =cut
 
@@ -437,75 +483,100 @@ not needed but you'd like to specify it anyway for documentation
 purposes, you can use the no_justify option below. Also, it does change
 the data in the hash ref argument.
 
-The optional second argument to new is a hash ref which may contain any of the following key(s):
+The optional second argument to new is a hash ref which may contain any of the following keys:
 
-=head3 delim 
+=over 4
+
+=item delim 
 
 The delimiter used to separate the name and length in the
-         format array. If another delimiter follows the length then
-         the next two fields are assumed to be start and end position,
-         and after that any 'extra' fields are ignored.  The default
-         delimiter is ":". The package variable DELIM may also be used.
+format array. If another delimiter follows the length then
+the next two fields are assumed to be start and end position,
+and after that any 'extra' fields are ignored.  The package variable
+DELIM may also be used.
+(default: ":")
 
-=head3 all_lengths
+=item no_bless
+Do not bless the hash ref returned from the parse method into
+a Hash-As-Object package.
+(default: false)
+
+=item all_lengths
 
 This option ignores any lengths supplied in the format
-         argument (or allows having no length args in the format), and
-         sets the lengths for all the fields to this value. As well as
-         the obvious case where all formats are the same length, this can
-         help facilitate converting from a non-fixed length format (where
-         you just have field names) to a fixed-length format.
+argument (or allows having no length args in the format), and
+sets the lengths for all the fields to this value. As well as
+the obvious case where all formats are the same length, this can
+help facilitate converting from a non-fixed length format (where
+you just have field names) to a fixed-length format.
+(default: false)
 
-=head3 autonum
+=item autonum
 
 This option controls the behavior of new() when duplicate
-         field names are found. By default a fatal error will be
-         generated if duplicate field names are found. If you have,
-         e.g., some unused filler fields, then as the value to this
-         option, you can either supply an arrayref containing valid
-         duplicate names or a simple true value to accept all duplicate
-         values. If there is more than one duplicate field, then when
-         parsed, they will be renamed '<name>_1', '<name>_2', etc.
+field names are found. By default a fatal error will be
+generated if duplicate field names are found. If you have,
+e.g., some unused filler fields, then as the value to this
+option, you can either supply an arrayref containing valid
+duplicate names or a simple true value to accept all duplicate
+values. If there is more than one duplicate field, then when
+parsed, they will be renamed '<name>_1', '<name>_2', etc.
+(default: false)
 
-=head3 spaces
+=item spaces
 
 If true, preserve trailing spaces during parse.
+(default: false)
 
-=head3 no_justify
+=item no_justify
 
 If true, ignore the "R" format option during pack.
+(default: false)
 
-=head3 no_validate
+=item no_validate
 
 By default, if two fields exist after the length
-          argument in the format (delimited by whatever delimiter is
-          set), then they are assumed to be the start and end position
-          (starting at 1), of the field, and these fields are validated
-          to be correct, and a fatal error will be generated if they
-          are not correct.  If this option is true, then the start and
-          end are not validated.
+argument in the format (delimited by whatever delimiter is
+set), then they are assumed to be the start and end position
+(starting at 1), of the field, and these fields are validated
+to be correct, and a fatal error will be generated if they
+are not correct.  If this option is true, then the start and
+end are not validated.
+(default: false)
 
-=head3 trim
+=item trim
 
 If true, trim leading pad characters from fields during parse.
+(default: false)
 
-=head3 debug
+=item debug
 
 If true, print field names and values during parsing and
-          packing (as a quick format validation check). The package
-          variable DEBUG may also be used. If a non-reference
-          argument is given, output is sent to STDOUT, otherwise we
-          assume we have a filehandle open for writing.
+packing (as a quick format validation check). The package
+variable DEBUG may also be used. If a non-reference
+argument is given, output is sent to STDOUT, otherwise we
+assume we have a filehandle open for writing.
+(default: true)
+
+=back
 
 =head2 parse() 
 
  $hash_ref = $parser->parse($string)
  @ary      = $parser->parse($string)
 
-This function takes a string and returns the results of
-fixed length parsing as a hash reference of field names and
-values if called in scalar context, or just a list of the
-values if called in list context.
+This function takes a string and returns a hash reference of
+field names and values if called in scalar context, or just a list of the
+values if called in list context. The hash reference returned is
+an object, so you can either get/set values the normal way:
+
+    $href->{key} = "value";
+    print "$href->{key}\n";
+
+or you can use methods:
+
+    $href->key = "value";
+    print $href->key,"\n";
 
 =head2 pack()
 
@@ -599,9 +670,15 @@ key/value pairs in the 'defaults' hash ref the following:
 The fourth argument is an optional hash ref may which may
 contain the following:
 
- no_pack - If true, the convert() method will return a hash reference
-           instead of packing the data into an ascii string
-           (Default: false).
+=over 4
+
+=item no_pack
+
+If true, the convert() method will return a hash reference
+instead of packing the data into an ascii string
+(Default: false).
+
+=back
 
 =head2 convert()
 
@@ -650,7 +727,6 @@ If a second argument is supplied, it will override the converter's no_pack optio
         widgets_this_month => '5R0',
     ]);
 
-    # Use delim option just for example
     my $parser2 = Parse::FixedLength->new([qw(
         seq_id:10
         first_name:10
@@ -713,6 +789,23 @@ If a second argument is supplied, it will override the converter's no_pack optio
     use Parse::FixedLength::DrugCo100;
     my $parser = Parse::FixedLength::Drugco100->new;
 
+=head1 CAVEATS
+
+For efficiency, a parser object will return the same hash reference
+on every call to parse. Therefore, any code such as this:
+
+    while (<>) {
+        my $href = $parser->parse($_);
+        push @array, $href;
+    }
+
+should be changed to this:
+
+    while (<>) {
+        my $href = $parser->parse($_);
+        push @array, { %$href };
+    }
+
 =head1 AUTHOR
 
  Douglas Wilson <dougw@cpan.org>
@@ -722,5 +815,14 @@ If a second argument is supplied, it will override the converter's no_pack optio
 
  This module is free software; you can redistribute it and/or
  modify it under the same terms as Perl itself.
+
+=head1 SEE ALSO
+
+Other glorified substitutes for pack/unpack:
+L<Text::FixedLength|Text::FixedLength>, L<Data::FixedFormat|Data::FixedFormat>,
+L<AnyData::Format::Fixed|AnyData::Format::Fixed> (although
+the AnyData module is part of a larger collection of modules which
+facilitates converting data between many different kinds of formats, and
+through DBD::AnyData, using SQL to query those data sources).
 
 =cut
