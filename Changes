@@ -1,4 +1,11 @@
 Revision history for Perl extension Parse::FixedLength.
+5.04  Tue Jul 24 12:31:35 PDT 2001
+    - Added right-justification option.
+    - Added the questionable feature of the convert method to facilitate
+      converting fixed length formats along with a corresponding test.
+    - Noticed the similar functionality/purpose of Data::FixedFormat.
+      Oh well, make up your own mind which you'd like to use...I kind
+      of like this one :)
 5.03  Thu Jun 28 08:04:27 PDT 2001
     - Improved documentation.
     - Added length method and more examples, took out some temp variables to

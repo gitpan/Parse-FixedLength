@@ -5,7 +5,4 @@ WriteMakefile(
     'NAME'		=> 'Parse::FixedLength',
     'VERSION_FROM'	=> 'FixedLength.pm', # finds $VERSION
     'PREREQ_PM'		=> {}, # e.g., Module::Name => 1.1
-    'dist'          => {COMPRESS => 'gzip',
-                        SUFFIX   => 'gz',
-                       },
 );
