@@ -19,7 +19,7 @@ print "ok 1\n";
 # of the test code):
 
 my $parser = Parse::FixedLength->new([qw(
- first_name:10
+ first_name:10:morestuff
  last_name:10
  address:20
 )], {delim=>":"});
@@ -46,11 +46,11 @@ print "ok 6\n";
 print $not unless $parser->length('first_name') == 10;
 print "ok 7\n";
 
-my $parser1 = Parse::FixedLength->new([
-    first_name => 10,
-    last_name  => 10,
-    widgets_this_month => '5R0',
-]);
+my $parser1 = Parse::FixedLength->new([qw(
+    first_name:10
+    last_name:10
+    widgets_this_month:5R0
+)], {delim=>":"});
 
 my $parser2 = Parse::FixedLength->new([
     seq_id     => 10,

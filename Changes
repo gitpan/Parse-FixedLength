@@ -1,4 +1,9 @@
 Revision history for Perl extension Parse::FixedLength.
+5.08  Fri Jul 27 18:31:02 PDT 2001
+    - Some doc fixes.
+    - Various changes after a code review with Graham Barr at TPC,
+      e.g., like adding error checking, making ":" the default delimiter,
+      auto-detecting the formats, and talking me into using Scalar::Util.
 5.07  Thu Jul 26 12:51:11 PDT 2001
     - Slight efficiency in construction of pack string for (what I
       think is) the common case.

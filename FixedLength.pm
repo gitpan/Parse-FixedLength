@@ -5,8 +5,10 @@ use strict;
 #-----------------------------------------------------------------------
 #	Public Global Variables
 #-----------------------------------------------------------------------
-use vars qw($VERSION $DEBUG);
-$VERSION   = '5.07';
+use Carp;
+use vars qw($VERSION $DELIM $DEBUG);
+$VERSION   = '5.08';
+$DELIM = ":";
 $DEBUG = 0;
 
 #=======================================================================
@@ -17,57 +19,84 @@ sub new {
     my $self = bless {}, $class;
     my $format = shift;
     my $params = shift;
-    my $delim = $params->{'delim'};
+    my $delim = exists $params->{'delim'} ? $params->{'delim'} : $DELIM;
+    $self->{DELIM} = $delim;
+    my $delim_re = qr/\Q$delim/;
+    croak "Delimiter argument must be one character" unless length($delim)==1;
     my $spaces = $params->{'spaces'} ? 'a' : 'A';
-    my (@names, @lengths, %justify);
-    my $length = 0;
-    if (defined $delim) {
-        $self->{DELIM} = $delim;
-        for (@$format) {
-            my ($name, $len) = split $delim;
-            push @names, $name;
-            ($len, my $chr) = _right_justify($len);
-            $justify{$name} = $chr if defined $chr;
-            push @lengths, $len;
-            $length += $len;
-        }
-    } else {
-        for (my $i=0; $i < $#$format; $i+=2) {
-            my $name = $$format[$i];
-            my $len = $$format[$i+1];
-            ($len, my $chr) = _right_justify($len);
-            $justify{$name} = $chr if defined $chr;
-            push @names, $name;
-            push @lengths, $len;
-            $length += $len;
-        }
-    }
-    $self->{NAMES} = \@names;
-    $self->{PACK} = $self->{UNPACK} = join '', map { "$spaces$_" } @lengths;
-    $self->{PACK} = join '', map { "A$_" } @lengths if $spaces eq 'a';
+    my $is_hsh = $self->{IS_HSH} = _chk_format_type($format, $delim_re);
+
+    # Convert hash-like array to delimited array
+    $format = [ map  { $$format[$_].$delim.$$format[$_+1] }
+                grep { not $_ % 2 } 0..$#$format
+              ] if $is_hsh;
+    my ($names, $lengths, $justify, $length) =
+        _parse_format($format, $delim, $delim_re, ! $$params{no_validate});
+
+    $self->{NAMES} = $names;
+    $self->{UNPACK} = join '', map { "$spaces$_" } @$lengths;
+    $self->{PACK} = uc($self->{UNPACK});
     $self->{LENGTH} = $length;
-    if (%justify and ! $params->{'no_justify'}) {
-     $self->{JUST} = 1;
-     $self->{JFIELDS} = \%justify;
+    # Save justify fields no matter what for benefit of dumper()
+    if (%$justify) {
+        $self->{JFIELDS} = $justify;
+        $self->{JUST} = 1 unless $$params{no_justify};
     }
     my %lengths;
-    @lengths{@names} = @lengths;
+    @lengths{@$names} = @$lengths;
     $self->{LENGTHS} = \%lengths;
-    $self->{DEBUG} = (exists $$params{'debug'})? $params->{'debug'} : $DEBUG;
+    $self->{DEBUG} = exists $$params{'debug'} ? $$params{'debug'} : $DEBUG;
     $self;
 }
 
-sub _right_justify {
-    my $len = shift;
-    my $chr;
-    if ((my $pos = index($len, "R")) >= 0) {
-        my $tmp_len = substr($len, 0, $pos);
-        $chr = (length($len) > $pos) ? substr($len,$pos+1,1) : ' ';
-        $len = $tmp_len;
+# Determine which format we have, the delimited array ref
+# or the hash-like array ref.
+# There must be delimiters in either all of the elements or none in
+# alternating elements with an even number of elements.
+# Assume what we have from the first element.
+sub _chk_format_type {
+    my ($format, $delim) = @_;
+    my $is_hsh = 1 unless $$format[0] =~ $delim;
+    croak "Odd number of name/length pairs or missing delimiter on first field"
+        if $is_hsh and @$format % 2;
+    for my $i (0..$#$format) {
+        my $field = $$format[$i];
+        if ($field =~ $delim) {
+            croak "Field $field contains delimiter"
+                if $is_hsh and not @$format % 2;
+        } else { croak "Field $field is missing delimiter" unless $is_hsh }
     }
-    return $len, $chr;
+    return $is_hsh;
 }
 
+sub _parse_format {
+    my ($format, $delim, $validate) = @_;
+    my $length = 0;
+    my (@names, @lengths, %justify);
+    my $nxt = 1;
+    for (@$format) {
+        my ($name, $tmp_len, $start, $end) = split $delim;
+        _chk_start_end($name, $nxt, $start, $end) if $validate;
+        push @names, $name;
+        # The results of the inner-parens is not guaranteed unless the
+        # outer parens match, so we do it this way
+        my ($len, $is_just, $chr) = $tmp_len =~ /^(\d+)((?:R(.?))?)$/
+            or croak "Bad length $tmp_len for field $name";
+        $justify{$name} = defined $chr ? $chr : ' ' if $is_just;
+        push @lengths, $len;
+        $length += $len;
+        $nxt = $end + 1;
+    }
+    return \@names, \@lengths, \%justify, $length;
+}
+
+sub _chk_start_end {
+    my ($name, $prev, $start, $end) = @_;
+    if (defined($start) && defined($end)) {
+        croak "Bad start position at field $name" unless $start == $prev+1;
+        croak "End position is less than start at field $name" if $end < $start;
+    }
+}
 #=======================================================================
 sub parse {
     my $parser = shift;
@@ -93,7 +122,8 @@ sub pack {
             (my $field = $$href{$name}) =~ s/^\s+|\s+$//g;
             $field =~ s/^${chr}+// if $chr ne ' ';
             my $len = $parser->length($name);
-            $$href{$name} = $chr x ($len-length($field)) . $field;
+            # Should we warn if we're truncating the field?
+            $$href{$name} = substr(($chr x $len) . $field, -$len);
         }
     }
     # Print debug output after justifying fields
@@ -119,15 +149,24 @@ sub length {
 #=======================================================================
 sub dumper {
     my $parser = shift;
+    my $pos_comment = shift;
     my $start = 1;
     my $end;
     my $delim = $parser->{DELIM};
-    my $format = (defined $delim)
-        ? sub { join $delim, @_ }
-        : sub { sprintf("%s => %s, # %s-%s", @_) };
+    my $format = $pos_comment
+       ? sub { sprintf("%s => %s, # %s-%s", @_) }
+       : $parser->{IS_HSH}
+         ? sub { sprintf("%s => '%s${delim}%s${delim}%s',", @_) }
+         : sub { join $delim, @_ };
     my $layout = '';
+    my $jfields = $parser->{JFIELDS} || {};
     for my $name (@{$parser->names}) {
         my $len = $parser->length($name);
+        my $just = exists $jfields->{$name}
+          ? $jfields->{$name} eq ' ' ? 'R' : "R$jfields->{$name}"
+          : '';
+        $len .= $just;
+        $len = qq('$len') if $just and ($parser->{IS_HSH} or $pos_comment);
         $end = $start + $len - 1;
         $layout .= $format->($name, $len, $start, $end) . "\n";
         $start = $end + 1;
@@ -140,6 +179,8 @@ sub converter {
 }
 
 package Parse::FixedLength::Converter;
+use Carp;
+use Scalar::Util qw(reftype);
 
 #=======================================================================
 sub new {
@@ -151,9 +192,11 @@ sub new {
    my ($parser1, $parser2, $mappings, $defaults) = @_;
    $self->{UNPACKER} = $parser1;
    $self->{PACKER} = $parser2;
-   $self->{MAP} = UNIVERSAL::isa($mappings,'HASH')
-       ? { reverse %$mappings }
-       : { reverse @$mappings };
+   my $type = reftype($mappings) || '';
+   croak 'Map arg not a hash or array ref' unless $type =~ /^(HASH|ARRAY)$/;
+   $self->{MAP} = { reverse $type eq 'HASH' ? %$mappings : @$mappings };
+   $type = reftype($defaults) || '';
+   croak 'Defaults arg not a hash ref' unless $type eq 'HASH';
    $self->{DEFAULTS} = $defaults;
    $self;
 }
@@ -166,8 +209,8 @@ sub convert {
     my $map_to   = $converter->{MAP};
     my $defaults = $converter->{DEFAULTS};
 
-    $data_in = $unpacker->parse($data_in)
-        unless UNIVERSAL::isa($data_in, 'HASH');
+    my $type = reftype($data_in) || '';
+    $data_in = $unpacker->parse($data_in) unless $type eq 'HASH';
     my $names_out = $packer->names;
 
     # Map the data from input to output
@@ -177,10 +220,9 @@ sub convert {
     } @$names_out;
 
     # Default/Convert the fields
-    for (keys %$defaults) {
-        $data_out{$_} =
-        ref($defaults->{$_}) ?
-            $defaults->{$_}->($data_out{$_},$data_in) : $defaults->{$_};
+    while (my ($name, $default) = each %$defaults) {
+        $data_out{$name} = ref $default
+          ? $default->($data_out{$name}, $data_in) : $default;
     }
     $packer->pack(\%data_out);
 }
@@ -244,7 +286,10 @@ same field, e.g.:
         first_name:10
         last_name:10
         address:20
-    )], {delim=>":"});
+    )]);
+
+If the first format is chosen, then no delimiter characters may
+appear in the field names (see delim option below).
 
 To right justify a field (during the 'pack' method), an "R" may
 be appended to the length of the field along with (optionally)
@@ -260,11 +305,13 @@ An optional hash ref may also be supplied which may contain the following:
 
  delim - The delimiter used to separate the name and length in
          the format array. If another delimiter follows the length
-         then any 'extra' fields are ignored.
+         then any 'extra' fields are ignored (though I may reserve
+         the next two fields for start and end position and use them
+         for validation purposes). Default delimiter is ":";
 
  spaces - If true, preserve trailing spaces during parse.
 
- no_justify - Ignore the "R" format option during pack.
+ no_justify - If true, ignore the "R" format option during pack.
 
  debug  - Print field names and values during parsing (as a quick
           format validation check).
@@ -307,22 +354,24 @@ E.g.:
 
 =item dumper()
 
- $parser->dumper;
+ $parser->dumper($pos_as_comments);
 
 Returns the parser's format layout information in a format suitable
 for cutting and pasting into the format array argument of a
 Parse::FixedFormat->new() call, and includes the start and end positions
-of all the fields (starting with position 1). E.g.:
+of all the fields (starting with position 1). If a true argument is supplied
+then it will include the start and ending positions as comments. E.g.:
 
  # Assume the parser is from the ones defined in the new() example:
- print $parser->dumper;
+ print $parser->dumper(1);
 
- produces:
+ produces for first example:
  first_name => 10, # 1-10
  last_name => 10, # 11-20
  address => 20, # 21-40 
 
- or:
+ or for the second example:
+ print $parser->dumper;
 
  first_name:10:1:10
  last_name:10:11:20
