@@ -6,7 +6,7 @@
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-BEGIN { $| = 1; print "1..9\n"; }
+BEGIN { $| = 1; print "1..11\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use Parse::FixedLength;
 $loaded = 1;
@@ -48,14 +48,21 @@ my $converter1 = $parser1->converter($parser2, {
 print $not unless defined $converter1;
 print "ok 4\n";
 
-my $str_in1 = 'BOB       JONES        24';
-my $data_out1 = $converter1->convert($str_in1);
+my $str_in = 'BOB       JONES        24';
+my $data_out1 = $converter1->convert($str_in);
 print $not unless ref($data_out1) eq 'HASH';
 print "ok 5\n";
 
 print $not unless $parser2->pack($data_out1)
     eq '0000000001BOB       JONES     USA0000000288';
 print "ok 6\n";
+
+my $str_out = $converter1->convert($str_in, 0);
+print $not if ref($str_out);
+print "ok 7\n";
+
+print $not unless $str_out eq '0000000002BOB       JONES     USA0000000288';
+print "ok 8\n";
 
 my $converter2 = $parser1->converter($parser2, {
     widgets_this_month => widgets_this_year,
@@ -68,13 +75,12 @@ my $converter2 = $parser1->converter($parser2, {
 });
 
 print $not unless defined $converter2;
-print "ok 7\n";
+print "ok 9\n";
 
-my $str_in2 = 'BOB       JONES        24';
-my $data_out2 = $converter2->convert($str_in2, 1);
+my $data_out2 = $converter2->convert($str_in, 1);
 print $not unless ref($data_out2) eq 'HASH';
-print "ok 8\n";
+print "ok 10\n";
 
 print $not unless $parser2->pack($data_out2)
     eq '0000000001BOB       JONES     USA0000000288';
-print "ok 9\n";
+print "ok 11\n";

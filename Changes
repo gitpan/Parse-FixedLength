@@ -1,6 +1,9 @@
 Revision history for Perl extension Parse::FixedLength.
+5.23  Fri Sep 14 18:00:00  2001
+    - If no_pack was true for converter object, passing false to
+      convert method was ignored. Added another test.
 5.22  Fri Sep 14 15:00:00  2001
-    - Allow no_pack argument to convert method, added tests
+    - Allow no_pack argument in convert method, added tests
 5.21  Fri Sep 14 08:00:00  2001
     - Fixed subclass example.
     - Added tests for subclassing / import method.

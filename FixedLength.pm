@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.22';
+$VERSION   = '5.23';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -193,14 +193,11 @@ sub pack {
     CORE::pack $parser->{PACK}, @$href{@{$parser->{NAMES}}};
 }
 #=======================================================================
-sub names {
-    shift->{NAMES};
-}
+sub names { shift->{NAMES} }
 #=======================================================================
 sub length {
     my $self = shift;
-    my $field = shift or return $self->{LENGTH};
-    $self->{LENGTHS}{$field};
+    @_ ? $self->{LENGTHS}{$_[0]} : $self->{LENGTH};
 }
 #=======================================================================
 sub dumper {
@@ -269,7 +266,7 @@ sub new {
 sub convert {
     my $converter = shift;
     my $data_in   = shift;
-    my $no_pack   = @_ && shift || $converter->{NOPACK};
+    my $no_pack   = @_ ? shift : $converter->{NOPACK};
     my $packer    = $converter->{PACKER};
     my $map_to    = $converter->{MAP};
 
