@@ -19,3 +19,4 @@ t/subclass2.t
 t/testlib/Parse/FixedLength/FLTest.pm
 t/trim.t
 t/validate.t
+META.yml                                 Module meta-data (added by MakeMaker)

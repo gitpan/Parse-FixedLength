@@ -36,7 +36,7 @@ print $not unless defined $parser2;
 print "ok 3\n";
 
 my $converter = $parser1->converter($parser2, {
-    widgets_this_month => widgets_this_year,
+    widgets_this_month => "widgets_this_year",
 },{
     seq_id => do { my $cnt = '0' x $parser2->length('seq_id');
                    sub { ++$cnt };

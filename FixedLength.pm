@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.32';
+$VERSION   = '5.33';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -305,12 +305,11 @@ sub hash_to_obj {
     my $class_key = join "~=~", sort keys %$href;
     my $class = $Parse::FixedLength::HashAsObj::classes{$class_key} || do {
       no strict 'refs';
-      my $cnt = ++$Parse::FixedLength::HashAsObj::counter;
       my $name = $Parse::FixedLength::HashAsObj::classes{$class_key}
-        = "Href$cnt";
-      @{"Parse::FixedLength::HashAsObj::${name}::ISA"}
-        = "Parse::FixedLength::HashAsObj";
-      "Parse::FixedLength::HashAsObj::$name";
+        = "Parse::FixedLength::HashAsObj::Href" .
+        ++$Parse::FixedLength::HashAsObj::counter;
+      @{"${name}::ISA"} = "Parse::FixedLength::HashAsObj";
+      $name;
     };
     bless $href, $class;
 }
@@ -341,6 +340,8 @@ sub dumper {
     $layout;
 }
 #=======================================================================
+sub format_str { shift->{UNPACK} }
+#=======================================================================
 sub converter {
     Parse::FixedLength::Converter->new(@_);
 }
@@ -358,12 +359,14 @@ sub new {
     my ($parser1, $parser2, $mappings, $defaults, $parms) = @_;
     $self->{UNPACKER} = $parser1;
     $self->{PACKER}   = $parser2;
+    $mappings ||= {};
     confess 'Map arg not a hash or array ref'
         unless UNIVERSAL::isa($mappings, 'ARRAY')
             or UNIVERSAL::isa($mappings, 'HASH');
     $self->{MAP} = { reverse UNIVERSAL::isa($mappings, 'HASH')
         ?  %$mappings : @$mappings
     };
+    $defaults ||= {};
     confess 'Defaults arg not a hash ref'
       unless UNIVERSAL::isa($defaults, 'HASH');
     my ($consts, $crefs) = ({}, {});
@@ -390,20 +393,21 @@ sub convert {
     my $names_out = $packer->names;
 
     # Map the data from input to output
-    my %data_out; @data_out{@$names_out} = map {
+    my $data_out = $packer->{DATA};
+    @$data_out{@$names_out} = map {
         exists $map_to->{$_} ? $data_in->{$map_to->{$_}}
       : exists $data_in->{$_} ? $data_in->{$_} : ''
     } @$names_out;
 
     # Default/Convert the fields
     while (my ($name, $default) = each %{$converter->{CONSTANTS}}) {
-        $data_out{$name} = $default
+        $data_out->{$name} = $default;
     }
     while (my ($name, $default) = each %{$converter->{CODEREFS}}) {
-        $data_out{$name} = eval { $default->($data_out{$name}, $data_in) };
+        $data_out->{$name} = eval { $default->($data_out->{$name}, $data_in) };
         confess "Failed to default field $name: $@" if $@;
     }
-    $no_pack ? \%data_out : $packer->pack(\%data_out);
+    $no_pack ? $data_out : $packer->pack($data_out);
 }
 
 package Parse::FixedLength::HashAsObj;
@@ -668,8 +672,8 @@ returns a fixed length format output string.
 
 =head2 hash_to_obj()
 
- Parse::FixedLength->hash_to_obj(\%href);
- $parser->hash_to_obj(\%href);
+ Parse::FixedLength->hash_to_obj($href);
+ $parser->hash_to_obj($href);
 
 This turns a hash reference into an object where the keys of the
 hash can be used as methods for accessing or setting the values
@@ -680,7 +684,7 @@ added to the hash if only methods are used to access the hash. Hashes
 with the same set of keys are blessed into the same package, so adding
 keys to one hash may affect the methods allowed on another hash.
 
-=head2 names()
+=head2 trim()
 
  $parser->trim(@data);
  $parser->trim(\%data);
@@ -694,6 +698,12 @@ is set in new(). The data passed is modified, so there is no return value.
  $ary_ref = $parser->names;
 
 Return an ordered arrayref of the field names.
+
+=head2 format_str()
+
+ $fmt_str = $parser->format_str;
+
+Return the format string used for unpacking.
 
 =head2 length()
 
@@ -833,7 +843,7 @@ If a second argument is supplied, it will override the converter's no_pack optio
     )]);
 
     my $converter = $parser1->converter($parser2, {
-        widgets_this_month => widgets_this_year,
+        widgets_this_month => "widgets_this_year",
     },{
         seq_id => do { my $cnt = '0' x $parser2->length('seq_id');
                        sub { ++$cnt };
@@ -856,7 +866,6 @@ If a second argument is supplied, it will override the converter's no_pack optio
     package Parse::FixedLength::DrugCo100;
 
     use Parse::FixedLength;
-    # 'our' or 'use vars' depending on perl version...
     our @ISA = qw(Parse::FixedLength);
 
     sub new {
@@ -893,14 +902,14 @@ on every call to parse. Therefore, any code such as this:
 
     while (<>) {
         my $href = $parser->parse($_);
-        push @array, $href;
+        push @array, $href; # Refers to same hash every time
     }
 
 should be changed to this:
 
     while (<>) {
         my $href = $parser->parse($_);
-        push @array, { %$href };
+        push @array, { %$href }; # Copy contents of hash
     }
 
 =head1 AUTHOR

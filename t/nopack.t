@@ -50,7 +50,7 @@ print "ok 4\n";
 
 my $str_in = 'BOB       JONES        24';
 my $data_out1 = $converter1->convert($str_in);
-print $not unless ref($data_out1) eq 'HASH';
+print $not unless UNIVERSAL::isa($data_out1, 'HASH');
 print "ok 5\n";
 
 print $not unless $parser2->pack($data_out1)
@@ -78,7 +78,7 @@ print $not unless defined $converter2;
 print "ok 9\n";
 
 my $data_out2 = $converter2->convert($str_in, 1);
-print $not unless ref($data_out2) eq 'HASH';
+print $not unless UNIVERSAL::isa($data_out2, 'HASH');
 print "ok 10\n";
 
 print $not unless $parser2->pack($data_out2)

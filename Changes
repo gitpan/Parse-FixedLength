@@ -1,4 +1,9 @@
 Revision history for Perl extension Parse::FixedLength.
+5.33  Wed Jul 21 17:00:00  2004
+    - Second hash_to_obj call with same keys as first wasn't working.
+    - Fixed tests (changed 'ref' to 'isa') which broke after previous change.
+    - Made example in doc use strict compliant (eliminated bare word string).
+    - Added format_str() to retrieve pack/unpack format string from parser.
 5.32  Fri Jun 11 17:00:00  2004
     - Allow any valid pack()/unpack() format in the length field
 5.31  Tue Jun 8 17:00:00  2004
