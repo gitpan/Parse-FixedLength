@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.20';
+$VERSION   = '5.21';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -610,9 +610,12 @@ Converts a string or a hash reference from one fixed length format to another.
     # Import list on use statement is optional, but
     # will cause require at compile time rather than run time.
     use Parse::FixedLength qw(DrugCo100);
-
-    my $parser = Parse::FixedLength('DrugCo100'); 
+    my $parser = Parse::FixedLength->new('DrugCo100'); 
     etc...
+
+    # Or of course you could just:
+    use Parse::FixedLength::DrugCo100;
+    my $parser = Parse::FixedLength::Drugco100->new;
 
 =head1 AUTHOR
 

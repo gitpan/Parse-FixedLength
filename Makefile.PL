@@ -4,8 +4,7 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     'NAME'         => 'Parse::FixedLength',
     'VERSION_FROM' => 'FixedLength.pm',
-    'PREREQ_PM'    => { },
     ($] >= 5.005 ?    ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM => 'FixedLength.pm', # retrieve abstract from module
+      (ABSTRACT_FROM => 'FixedLength.pm',
        AUTHOR     => 'Douglas Wilson <dougw@cpan.org>') : ()),
 );
