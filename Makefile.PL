@@ -10,8 +10,3 @@ WriteMakefile(
       (ABSTRACT_FROM => 'FixedLength.pm',
        AUTHOR     => 'Douglas Wilson <dougw@cpan.org>') : ()),
 );
-find( sub {
-    return unless /^FLTest.pt$/;
-    return if -f "FLTest.pm";
-    copy("FLTest.pt", "FLTest.pm") or die "Couldn't create FLTest.pm: $!";
-}, ".");

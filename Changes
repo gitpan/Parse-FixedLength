@@ -1,4 +1,9 @@
 Revision history for Perl extension Parse::FixedLength.
+5.30  Fri Apr 16 17:00:00  2004
+    - Took out Makefile.PL code for changing name of test
+      module (see if it shows up on CPAN).
+    - Document hash_to_obj() method and various other doc
+      format changes.
 5.29  Thu Apr 15 17:00:00  2004
     - Doc glitch fix.
 5.28  Thu Apr 15 17:00:00  2004

@@ -1,10 +1,11 @@
 Changes
 FixedLength.pm
 MANIFEST
-README
+Makefile
 Makefile.PL
-t/testlib/Parse/FixedLength/FLTest.pt
+README
 t/alllengths.t
+t/autoload.t
 t/autonum.t
 t/base.t
 t/convert.t
@@ -15,5 +16,6 @@ t/nopack.t
 t/space.t
 t/subclass1.t
 t/subclass2.t
+t/testlib/Parse/FixedLength/FLTest.pm
 t/trim.t
 t/validate.t

@@ -6,11 +6,10 @@ use strict;
 #	Public Global Variables
 #-----------------------------------------------------------------------
 use Carp;
-use vars qw($VERSION $DELIM $DEBUG $HASH_CLASS);
-$VERSION   = '5.29';
+use vars qw($VERSION $DELIM $DEBUG);
+$VERSION   = '5.30';
 $DELIM = ":";
 $DEBUG = 0;
-$HASH_CLASS = __PACKAGE__ . "::HashAsObj";
 
 #=======================================================================
 sub import {
@@ -270,13 +269,15 @@ sub hash_to_obj {
     my $self = shift;
     my $href = shift;
 
-    no strict 'refs';
     my $class_key = join "~=~", sort keys %$href;
-    my $class = ${"${HASH_CLASS}::classes"}{$class_key} || do {
-      my $cnt = ++${"${HASH_CLASS}::counter"};
-      my $name = ${"${HASH_CLASS}::classes"}{$class_key} = "Href$cnt";
-      @{"${HASH_CLASS}::${name}::ISA"} = $HASH_CLASS;
-      "${HASH_CLASS}::$name";
+    my $class = $Parse::FixedLength::HashAsObj::classes{$class_key} || do {
+      no strict 'refs';
+      my $cnt = ++$Parse::FixedLength::HashAsObj::counter;
+      my $name = $Parse::FixedLength::HashAsObj::classes{$class_key}
+        = "Href$cnt";
+      @{"Parse::FixedLength::HashAsObj::${name}::ISA"}
+        = "Parse::FixedLength::HashAsObj";
+      "Parse::FixedLength::HashAsObj::$name";
     };
     bless $href, $class;
 }
@@ -426,7 +427,7 @@ Parse::FixedLength - parse an ascii string containing fixed length fields into c
 
 The C<Parse::FixedLength> module facilitates the process of breaking
 a string into its fixed-length components. Sure, it's a glorified
-(and in some ways more limited) substitute of the perl functions pack and
+(and in some ways more limited) substitute for the perl functions pack and
 unpack, but it's my belief that this module helps in the maintainability
 of working with fixed length formats as the number of fields in a format grows.
 
@@ -483,11 +484,14 @@ not needed but you'd like to specify it anyway for documentation
 purposes, you can use the no_justify option below. Also, it does change
 the data in the hash ref argument.
 
-The optional second argument to new is a hash ref which may contain any of the following keys:
+The optional second argument to new is a hash ref which may contain
+any of the following keys:
 
 =over 4
 
-=item delim 
+=item *
+
+=head3 delim 
 
 The delimiter used to separate the name and length in the
 format array. If another delimiter follows the length then
@@ -496,13 +500,17 @@ and after that any 'extra' fields are ignored.  The package variable
 DELIM may also be used.
 (default: ":")
 
-=item no_bless
+=item *
+
+=head3 no_bless
 
 Do not bless the hash ref returned from the parse method into
 a Hash-As-Object package.
 (default: false)
 
-=item all_lengths
+=item *
+
+=head3 all_lengths
 
 This option ignores any lengths supplied in the format
 argument (or allows having no length args in the format), and
@@ -512,7 +520,9 @@ help facilitate converting from a non-fixed length format (where
 you just have field names) to a fixed-length format.
 (default: false)
 
-=item autonum
+=item *
+
+=head3 autonum
 
 This option controls the behavior of new() when duplicate
 field names are found. By default a fatal error will be
@@ -524,17 +534,23 @@ values. If there is more than one duplicate field, then when
 parsed, they will be renamed '<name>_1', '<name>_2', etc.
 (default: false)
 
-=item spaces
+=item *
+
+=head3 spaces
 
 If true, preserve trailing spaces during parse.
 (default: false)
 
-=item no_justify
+=item *
+
+=head3 no_justify
 
 If true, ignore the "R" format option during pack.
 (default: false)
 
-=item no_validate
+=item *
+
+=head3 no_validate
 
 By default, if two fields exist after the length
 argument in the format (delimited by whatever delimiter is
@@ -545,12 +561,16 @@ are not correct.  If this option is true, then the start and
 end are not validated.
 (default: false)
 
-=item trim
+=item *
+
+=head3 trim
 
 If true, trim leading pad characters from fields during parse.
 (default: false)
 
-=item debug
+=item *
+
+=head3 debug
 
 If true, print field names and values during parsing and
 packing (as a quick format validation check). The package
@@ -566,7 +586,7 @@ assume we have a filehandle open for writing.
  $hash_ref = $parser->parse($string)
  @ary      = $parser->parse($string)
 
-This function takes a string and returns a hash reference of
+This method takes a string and returns a hash reference of
 field names and values if called in scalar context, or just a list of the
 values if called in list context. The hash reference returned is
 an object, so you can either get/set values the normal way:
@@ -583,15 +603,29 @@ or you can use methods:
 
  $data = $parser->pack(\%data_to_pack);
 
-This function takes a hash reference of field names and values and
+This method takes a hash reference of field names and values and
 returns a fixed length format output string.
+
+=head2 hash_to_obj()
+
+ Parse::FixedLength->hash_to_obj(\%href);
+ $parser->hash_to_obj(\%href);
+
+This turns a hash reference into an object where the keys of the
+hash can be used as methods for accessing or setting the values
+of the hash. This turns the hash into a semi-secure hash which is
+a sort of combination of L<Hash::AsObject|Hash::AsObject> and
+L<Tie::SecureHash|Tie::SecureHash> in that no new keys will be
+added to the hash if only methods are used to access the hash. Hashes
+with the same set of keys are blessed into the same package, so adding
+keys to one hash may affect the methods allowed on another hash.
 
 =head2 names()
 
  $parser->trim(@data);
  $parser->trim(\%data);
 
-This function trims leading pad characters from the data. It is the
+This method trims leading pad characters from the data. It is the
 method implicitly called during the parse method when the 'trim' option
 is set in new(). The data passed is modified, so there is no return value.
 
@@ -673,7 +707,9 @@ contain the following:
 
 =over 4
 
-=item no_pack
+=item *
+
+=head3 no_pack
 
 If true, the convert() method will return a hash reference
 instead of packing the data into an ascii string
