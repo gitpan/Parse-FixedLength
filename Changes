@@ -1,4 +1,6 @@
 Revision history for Perl extension Parse::FixedLength.
+5.27  Mon Oct 6 17:00:00  2003
+    - Just doc fixes. Patch by Terrence Brannon.
 5.26  Tue Sep 25 17:00:00  2001
     - Changed the way the subclass test module is created. It was bugging me
       having to un-rename the test module for a 'make tardist' after a

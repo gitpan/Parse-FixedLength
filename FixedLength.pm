@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.26';
+$VERSION   = '5.27';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -388,9 +388,7 @@ a string into its fixed-length components.
 
 =head1 PARSING METHODS
 
-=over 4
-
-=item new() 
+=head2 new() 
 
  $parser = Parse::FixedLength->new(\@format)
  $parser = Parse::FixedLength->new(\@format, \%parameters)
@@ -441,20 +439,26 @@ the data in the hash ref argument.
 
 The optional second argument to new is a hash ref which may contain any of the following key(s):
 
- delim - The delimiter used to separate the name and length in the
+=head3 delim 
+
+The delimiter used to separate the name and length in the
          format array. If another delimiter follows the length then
          the next two fields are assumed to be start and end position,
          and after that any 'extra' fields are ignored.  The default
          delimiter is ":". The package variable DELIM may also be used.
 
- all_lengths - This option ignores any lengths supplied in the format
+=head3 all_lengths
+
+This option ignores any lengths supplied in the format
          argument (or allows having no length args in the format), and
          sets the lengths for all the fields to this value. As well as
          the obvious case where all formats are the same length, this can
          help facilitate converting from a non-fixed length format (where
          you just have field names) to a fixed-length format.
 
- autonum - This option controls the behavior of new() when duplicate
+=head3 autonum
+
+This option controls the behavior of new() when duplicate
          field names are found. By default a fatal error will be
          generated if duplicate field names are found. If you have,
          e.g., some unused filler fields, then as the value to this
@@ -463,11 +467,17 @@ The optional second argument to new is a hash ref which may contain any of the f
          values. If there is more than one duplicate field, then when
          parsed, they will be renamed '<name>_1', '<name>_2', etc.
 
- spaces - If true, preserve trailing spaces during parse.
+=head3 spaces
 
- no_justify - If true, ignore the "R" format option during pack.
+If true, preserve trailing spaces during parse.
 
- no_validate - By default, if two fields exist after the length
+=head3 no_justify
+
+If true, ignore the "R" format option during pack.
+
+=head3 no_validate
+
+By default, if two fields exist after the length
           argument in the format (delimited by whatever delimiter is
           set), then they are assumed to be the start and end position
           (starting at 1), of the field, and these fields are validated
@@ -475,15 +485,19 @@ The optional second argument to new is a hash ref which may contain any of the f
           are not correct.  If this option is true, then the start and
           end are not validated.
 
- trim   - If true, trim leading pad characters from fields during parse.
+=head3 trim
 
- debug  - If true, print field names and values during parsing and
+If true, trim leading pad characters from fields during parse.
+
+=head3 debug
+
+If true, print field names and values during parsing and
           packing (as a quick format validation check). The package
           variable DEBUG may also be used. If a non-reference
           argument is given, output is sent to STDOUT, otherwise we
           assume we have a filehandle open for writing.
 
-=item parse() 
+=head2 parse() 
 
  $hash_ref = $parser->parse($string)
  @ary      = $parser->parse($string)
@@ -493,14 +507,14 @@ fixed length parsing as a hash reference of field names and
 values if called in scalar context, or just a list of the
 values if called in list context.
 
-=item pack()
+=head2 pack()
 
  $data = $parser->pack(\%data_to_pack);
 
 This function takes a hash reference of field names and values and
 returns a fixed length format output string.
 
-=item names()
+=head2 names()
 
  $parser->trim(@data);
  $parser->trim(\%data);
@@ -509,13 +523,13 @@ This function trims leading pad characters from the data. It is the
 method implicitly called during the parse method when the 'trim' option
 is set in new(). The data passed is modified, so there is no return value.
 
-=item names()
+=head2 names()
 
  $ary_ref = $parser->names;
 
 Return an ordered arrayref of the field names.
 
-=item length()
+=head2 length()
 
  $tot_length   = $parser->length;
  $field_length = $parser->length($name);
@@ -529,7 +543,7 @@ E.g.:
   ...
  }
 
-=item dumper()
+=head2 dumper()
 
  $parser->dumper($pos_as_comments);
 
@@ -554,7 +568,7 @@ then it will include the start and ending positions as comments. E.g.:
  last_name:10:11:20
  address:20:21:40
 
-=item converter()
+=head2 converter()
 
  $converter = $parser1->converter($parser2, \@maps, \%dflts, \%parms);
 
@@ -589,7 +603,7 @@ contain the following:
            instead of packing the data into an ascii string
            (Default: false).
 
-=item convert()
+=head2 convert()
 
  $data_out = $converter->convert($data_in);
  $data_out = $converter->convert($data_in, $no_pack);
@@ -599,9 +613,6 @@ contain the following:
 Converts a string or a hash reference from one fixed length format to another.
 If a second argument is supplied, it will override the converter's no_pack option setting.
 
-=back
-
-=cut
 
 =head1 EXAMPLES
 
@@ -665,7 +676,7 @@ If a second argument is supplied, it will override the converter's no_pack optio
         print $converter->convert($_), "\n";
     }
 
-=item Subclassing Example
+=head2 Subclassing Example
 
     # Must be installed as Parse/FixedLength/DrugCo100.pm
     # somewhere in @INC path.
