@@ -5,22 +5,22 @@ use strict;
 require Exporter;
 use Carp;
 
-our $debug = 1;
-
 #-----------------------------------------------------------------------
 #	Public Global Variables
 #-----------------------------------------------------------------------
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
-$VERSION   = '3.1';
+$VERSION   = '4.0';
 @ISA       = qw(Exporter);
 @EXPORT    = qw(parse print_parsed quick_parse);
 
 #-----------------------------------------------------------------------
 #	Global Variables for Program Use 
 #-----------------------------------------------------------------------
-our @parse_record=();
+use vars qw(@parse_record %quick_parse @us_phone @us_ssan 
+	    @MM_DD_YYYY @MM_DD_YY @YY_MM_DD @YYYY_MM_DD);
+@parse_record=();
 
-our %quick_parse =
+%quick_parse =
 (
  us_phone   => \@Parse::FixedLength::us_phone,
  us_ssan    => \@Parse::FixedLength::us_ssan,
@@ -51,7 +51,7 @@ sub parse {
 	for (keys %{$parse_instruction}) {
 #	    print $_, " ", $parse_instruction->{$_},$/;
 	    my $length=$parse_instruction->{$_};
-	    $parsed_string=substr($string_to_parse, $offset, $length), $/;
+	    $parsed_string=substr($string_to_parse, $offset, $length);
 	    $hash_ref->{$_}=$parsed_string;
 	    $offset += $length;
 	    $parse_record .= "\n\t/$_/ $parsed_string";
@@ -97,37 +97,37 @@ sub quick_parse {
 # initialisation code - stuff the DATA into the CODES hash
 #=======================================================================
 {
-our @us_phone= ( 
+ @us_phone= ( 
 	     {'area_code' => 3},
 	     {'exchange'  => 3},
 	     {'number'    => 4} 
 	     );
 
-our @us_ssan= ( 
+ @us_ssan= ( 
 	     {'A' =>  3},
 	     {'B' =>  2},
 	     {'C' =>  4} 
 	     );
 
-our @MM_DD_YYYY= ( 
+ @MM_DD_YYYY= ( 
 	     {'month' =>  2},
 	     {'day'   =>  2},
 	     {'year'  =>  4} 
 	     );
 
-our @MM_DD_YY= ( 
+ @MM_DD_YY= ( 
 	     {'month' =>  2},
 	     {'day'   =>  2},
 	     {'year'  =>  2} 
 	     );
 
-our @YY_MM_DD= ( 
+ @YY_MM_DD= ( 
 	     {'year'  =>  2},
 	     {'day'   =>  2},
 	     {'month'  =>  2} 
 	     );
 
-our @YYYY_MM_DD= ( 
+ @YYYY_MM_DD= ( 
 	     {'year'  =>  4},
 	     {'month'   =>  2},
 	     {'day'  =>  2} 
