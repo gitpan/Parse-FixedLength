@@ -3,4 +3,7 @@ FixedLength.pm
 MANIFEST
 README
 Makefile.PL
-test.pl
+t/base.t
+t/convert.t
+t/default.t
+t/space.t

@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.09';
+$VERSION   = '5.10';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -82,10 +82,10 @@ sub _parse_format {
         # outer parens match, so we do it this way
         my ($len, $is_just, $chr) = $tmp_len =~ /^(\d+)((?:R(.?))?)$/
             or croak "Bad length $tmp_len for field $name";
-        $justify{$name} = defined $chr ? $chr : ' ' if $is_just;
+        $justify{$name} = ($chr eq '') ? ' ' : $chr if $is_just;
         push @lengths, $len;
         $length += $len;
-        $nxt = $end + 1;
+        $nxt = $end + 1 if defined $end;
     }
     return \@names, \@lengths, \%justify, $length;
 }
@@ -411,7 +411,7 @@ from a separate 'zip' and 'plus_4' field to a 'zip_plus_4' field,
 you could map 'zip' to 'zip_plus_4' and then supply as one of the
 key/value pairs in the 'defaults' hash ref the following:
 
- zip_plus_4 => sub { shift() . $$_[1]{plus_4} }
+ zip_plus_4 => sub { shift() . $_[0]{plus_4} }
 
 =item convert()
 
