@@ -7,19 +7,36 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.18';
+$VERSION   = '5.20';
 $DELIM = ":";
 $DEBUG = 0;
 
 #=======================================================================
+sub import {
+    my $class = shift;
+    for (@_) {
+        eval "use ${class}::$_";
+        confess $@ if $@;
+    }
+}
+
 sub new {
     # Do the cargo cult OO construction thing
     my $proto = shift;
     my $class = ref($proto) || $proto;
-    my $self = bless {}, $class;
     my $format = shift;
+    unless (ref $format) {
+        my $newclass = "${class}::${format}";
+        my $result = eval { $newclass->new(@_)};
+        return $result unless $@;
+        confess $@ unless $@ =~ /Can't locate object method/;
+        # Assume we need to require this format
+        $class->import($format);
+        return $newclass->new(@_);
+    }
     confess "Format argument not an array ref"
         unless UNIVERSAL::isa($format, 'ARRAY');
+    my $self = bless {}, $class;
     my $params = shift;
     confess "Params argument not a hash ref"
         if defined $params and ! UNIVERSAL::isa($params, 'HASH');
@@ -285,10 +302,12 @@ Parse::FixedLength - parse an ascii string containing fixed length fields into c
 
 =head1 SYNOPSIS
 
-    use Parse::FixedLength;
+    use Parse::FixedLength qw(subclassed parsers);
     
     $parser = Parse::FixedLength->new(\@format);
     $parser = Parse::FixedLength->new(\@format, \%parameters);
+    $parser = Parse::FixedLength->new($format);
+    $parser = Parse::FixedLength->new($format, \%parameters);
 
     $hash_ref = $parser->parse($data);
     $data = $parser->pack($hash_ref);
@@ -316,10 +335,18 @@ a string into its fixed-length components.
 
 =item new() 
 
- $parser = Parser::FixedLength->new(\@format)
- $parser = Parser::FixedLength->new(\@format, \%parameters)
+ $parser = Parse::FixedLength->new(\@format)
+ $parser = Parse::FixedLength->new(\@format, \%parameters)
+ $parser = Parse::FixedLength->new($format)
+ $parser = Parse::FixedLength->new($format, \%parameters)
 
-This method takes an array reference of field names and
+If the format argument is a string, then new will attempt
+to return the result of calling the new method for
+"Parse::FixedLength::$format". You can include the '$format' in
+the import list of the 'use Parse::FixedLength' statement if
+you want to require the format at compile time (See EXAMPLES).
+
+Otherwise the format must be an array reference of field names and
 lengths as either alternating elements, or delimited args in the
 same field, e.g.:
 
@@ -341,7 +368,7 @@ If the first format is chosen, then no delimiter characters may
 appear in the field names (see delim option below).
 
 To right justify a field (during the 'pack' method), an "R" may
-be appended to the length of the field along with (optionally)
+be appended to the length of the field followed by (optionally)
 the character to pad the string with (if no character follows the
 "R", then a space is assumed). This is somewhat inefficient,
 so its only recommended if actually necessary to preserve the format
@@ -350,7 +377,7 @@ not needed but you'd like to specify it anyway for documentation
 purposes, you can use the no_justify option below. Also, it does change
 the data in the hash ref argument.
 
-An optional hash ref may also be supplied which may contain the following:
+The optional second argument to new is a hash ref which may contain any of the following key(s):
 
  delim - The delimiter used to separate the name and length in the
          format array. If another delimiter follows the length then
@@ -358,29 +385,30 @@ An optional hash ref may also be supplied which may contain the following:
          and after that any 'extra' fields are ignored.  The default
          delimiter is ":". The package variable DELIM may also be used.
 
- autonum - This option controls the behavior of new() when duplicate field
-         names are found. Normally the a fatal error will be generated if
-         duplicate field names are found. If you have, e.g., some unused
-         filler fields, then as the value to this option, you can either
-         supply an arrayref containing valid duplicate names or a simple
-         true value to accept all duplicate values. If there is
-         more than one duplicate field, then when parsed, they will be
-         renamed '<name>_1', '<name>_2', etc.
+ autonum - This option controls the behavior of new() when duplicate
+         field names are found. Normally a fatal error will be
+         generated if duplicate field names are found. If you have,
+         e.g., some unused filler fields, then as the value to this
+         option, you can either supply an arrayref containing valid
+         duplicate names or a simple true value to accept all duplicate
+         values. If there is more than one duplicate field, then when
+         parsed, they will be renamed '<name>_1', '<name>_2', etc.
 
  spaces - If true, preserve trailing spaces during parse.
 
  no_justify - If true, ignore the "R" format option during pack.
 
- no_validate - By default, if two fields exist after the length argument
-          in the format (delimited by whatever delimiter is set), then
-          they are assumed to be the start and end position (starting at 1),
-          of the field, and these fields are validated to be correct, and
-          a fatal error will be generated if they are not correct.
-          If this option is true, then the start and end are not validated.
+ no_validate - By default, if two fields exist after the length
+          argument in the format (delimited by whatever delimiter is
+          set), then they are assumed to be the start and end position
+          (starting at 1), of the field, and these fields are validated
+          to be correct, and a fatal error will be generated if they
+          are not correct.  If this option is true, then the start and
+          end are not validated.
 
- debug  - Print field names and values during parsing (as a quick
-          format validation check). The package variable DEBUG may also be
-          used.
+ debug  - Print field names and values during parsing and packing
+          (as a quick format validation check). The package variable
+          DEBUG may also be used.
 
 =item parse() 
 
@@ -413,6 +441,7 @@ Return an ordered arrayref of the field names.
 Returns the total length of all the fields, or of just one field name.
 E.g.:
 
+ # If there are no line feeds
  while (read FH, $data, $parser->length) {
   $parser->parse($data);
   ...
@@ -475,7 +504,8 @@ The fourth argument is an optional hash ref may which may
 contain the following:
 
  no_pack - If true, the convert() method will return a hash reference
-           instead of packing the data into an ascii string (Default: false).
+           instead of packing the data into an ascii string
+           (Default: false).
 
 =item convert()
 
@@ -549,6 +579,40 @@ Converts a string or a hash reference from one fixed length format to another.
         warn "Short Record!\n" unless $parser1->length == length;
         print $converter->convert($_), "\n";
     }
+
+=item Subclassing Example
+
+    # Must be installed as Parse/FixedLength/DrugCo100.pm
+    # somewhere in @INC path.
+    package Parse::FixedLength::DrugCo100;
+
+    use Parse::FixedLength;
+    # 'our' or 'use vars' depending on perl version...
+    our @ISA = qw(Parse::FixedLength);
+
+    sub new {
+        my $proto = shift;
+        my $class = ref($proto) || $proto;
+        $flags = shift || {};
+        die "Options arg not a hash ref"
+            unless UNIVERSAL::isa($flags,'HASH');
+        $$flags{autonum} = ['filler'];
+        bless $class->SUPER::new([qw(
+            stuff:40
+            filler:10
+            more_stuff:40
+            filler:10
+        )], $flags), $class;
+    }
+
+    Then in main script:
+
+    # Import list on use statement is optional, but
+    # will cause require at compile time rather than run time.
+    use Parse::FixedLength qw(DrugCo100);
+
+    my $parser = Parse::FixedLength('DrugCo100'); 
+    etc...
 
 =head1 AUTHOR
 
