@@ -10,7 +10,3 @@ TO INSTALL:
  make install
 
 See the perldocs and the tests (in the t directory) for examples.
-
-Don't worry if the subclass*.t tests don't work, I'm experimenting
-with how to make a test module not show up in CPAN and yet have the
-test work. If they don't work, let me know, and if possible tell me why. 

@@ -7,17 +7,38 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.25';
+$VERSION   = '5.26';
 $DELIM = ":";
 $DEBUG = 0;
 
 #=======================================================================
 sub import {
-    my $class = shift;
+    my $proto = shift;
+    my $class = ref($proto) || $proto;
     for (@_) {
+        $class->import($class->all_modules()), last if $_ eq ':all';
         eval "use ${class}::$_";
         confess $@ if $@;
     }
+}
+
+sub all_modules {
+    my $self = shift;
+    eval "use File::Spec";
+    confess $@ if $@;
+    my %modules;
+    for my $dir (@INC) {
+        my $pfl_dir = File::Spec->catdir($dir, 'Parse', 'FixedLength');
+        next unless -d $pfl_dir;
+        opendir(DIR, $pfl_dir) or confess "Can't read $pfl_dir: $!";
+        for (readdir DIR) {
+            my $module = $_;
+            next unless $module =~ s/\.pm$//;
+            $modules{$module} = undef;
+        }
+        closedir DIR;
+    }
+    keys %modules;
 }
 
 sub new {
@@ -365,7 +386,7 @@ a string into its fixed-length components.
 
 =cut
 
-=head1 PARSING ROUTINES
+=head1 PARSING METHODS
 
 =over 4
 
@@ -381,6 +402,11 @@ to return the result of calling the new method for
 "Parse::FixedLength::$format". You can include the '$format' in
 the import list of the 'use Parse::FixedLength' statement if
 you want to require the format at compile time (See EXAMPLES).
+
+You can use ':all' as an argument in the import list, e.g.,
+'use Parse::Length qw(:all)', to require all available
+Parse::FixedLength::* modules, but obviously you can't use ':all'
+as a format argument in new().
 
 Otherwise the format must be an array reference of field names and
 lengths as either alternating elements, or delimited args in the

@@ -20,9 +20,8 @@ BEGIN {
 EOT
 }
 
-# Without import list
-use Parse::FixedLength;
-
+# With import list
+use Parse::FixedLength qw(:all);
 $loaded = 1;
 print "ok 1\n";
 
@@ -30,7 +29,7 @@ print "ok 1\n";
 
 my $not = 'not ';
 
-my $parser = Parse::FixedLength->new('FLTest');
+my $parser = Parse::FixedLength::FLTest->new;
 
 print $not unless defined $parser;
 print "ok 2\n";
