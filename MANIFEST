@@ -1,5 +1,6 @@
 Changes
 FixedLength.pm
 MANIFEST
+README
 Makefile.PL
-
+test.pl

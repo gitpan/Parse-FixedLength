@@ -1,5 +1,9 @@
 Revision history for Perl extension Parse::FixedLength.
-
+5.01  Wed Jun 27 12:06:00 PDT 2001
+    - Changed to OO style, now uses unpack instead of substr for efficiency,
+      removed some features (for now?) like the predefined parsing
+      constants, but added others (like optionally returning a list
+      instead of a hashref).
 0.01  Thu Nov 16 13:41:21 2000
 	- original version; created by h2xs 1.20 with options
 		-A -X -n Parse::FixedLength

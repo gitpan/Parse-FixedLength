@@ -2,128 +2,72 @@ package Parse::FixedLength;
 use strict;
 
 
-require Exporter;
-use Carp;
-
 #-----------------------------------------------------------------------
 #	Public Global Variables
 #-----------------------------------------------------------------------
-use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
-$VERSION   = '4.1';
-@ISA       = qw(Exporter);
-@EXPORT    = qw(parse print_parsed quick_parse);
+use vars qw($VERSION);
+$VERSION   = '5.01';
 
-#-----------------------------------------------------------------------
-#	Global Variables for Program Use 
-#-----------------------------------------------------------------------
-use vars qw(%quick_parse @us_phone @us_ssan 
-	    @MM_DD_YYYY @MM_DD_YY @YY_MM_DD @YYYY_MM_DD
-	    $OD $CD $TRACE
-	    );
-$TRACE = 1;
-$OD = '<*<';
-$CD = '>*>';
-
-%quick_parse =
-(
- us_phone   => \@Parse::FixedLength::us_phone,
- us_ssan    => \@Parse::FixedLength::us_ssan,
- MM_DD_YYYY => \@Parse::FixedLength::MM_DD_YYYY,
- MM_DD_YY   => \@Parse::FixedLength::MM_DD_YY,
- YY_MM_DD   => \@Parse::FixedLength::YY_MM_DD,
- YYYY_MM_DD => \@Parse::FixedLength::YYYY_MM_DD
-);
-
+#=======================================================================
+sub new {
+    my $proto = shift;
+    my $class = ref($proto) || $proto;
+    my $self = bless {}, $class;
+    my $format = shift;
+    my $params = shift;
+    my $delim = $params->{'delim'};
+    my $spaces = $params->{'spaces'} ? 'a' : 'A';
+    my (@names, @lengths);
+    if (defined $delim) {
+        for (@$format) {
+            my ($name, $len) = split $delim;
+            push @names, $name;
+            push @lengths, $len;
+        }
+    } else {
+        for (my $i=0; $i < $#$format; $i+=2) {
+            push @names, $$format[$i];
+            push @lengths, $$format[$i+1];
+        }
+    }
+    $self->{NAMES} = \@names;
+    $self->{UNPACK} = join '', map { "$spaces$_" } @lengths;
+    $self->{PACK} = join '', map { "A$_" } @lengths;
+    $self->{DEBUG} = 1 if $params->{'debug'};
+    $self;
+}
 
 #=======================================================================
 sub parse {
-    my ($string_to_parse, $hash_ref, $parse_instruction_ref) = @_;
-    my $offset=0;
-    my $parse_record;
-    my $parsed_string;
-
-    warn "Parsing $OD$string_to_parse$CD" if $TRACE;
-   
-    foreach my $parse_instruction (@{$parse_instruction_ref}) {
-	for (keys %{$parse_instruction}) {
-#	    print $_, " ", $parse_instruction->{$_},$/;
-	    my $length=$parse_instruction->{$_};
-	    $parsed_string=substr($string_to_parse, $offset, $length);
-	    $hash_ref->{$_}=$parsed_string;
-	    $offset += $length;
-	    warn "$OD$_$CD parsed to $OD$parsed_string$CD" if $TRACE;
-	}
+    my $parser = shift;
+    my $string = shift;
+    my @parsed = unpack($parser->{UNPACK}, $string);
+    if ($parser->{DEBUG}) {
+     for my $i (0..$#{$parser->{NAMES}}) {
+         print "[$parser->{NAMES}[$i]][$parsed[$i]]\n";
+     }
+     print "\n";
     }
-
-    
-
-    $hash_ref;
-
+    return @parsed if wantarray;
+    my %parsed;
+    @parsed{@{$parser->{NAMES}}} = @parsed;
+    return \%parsed;
 }
-
 #=======================================================================
-
-
-sub quick_parse {
-    my ($name_of_formatting_LOH, $string_to_parse, $hash_ref) = @_;
-    my $offset=0;
-    
-    parse(
-	  $string_to_parse,
-	  $hash_ref,
-	  $quick_parse{$name_of_formatting_LOH}
-	 )
-      ;
+sub pack {
+    my $parser = shift;
+    my $data = shift;
+    pack $parser->{PACK}, @{$data}{@{$parser->{NAMES}}};
 }
-
 #=======================================================================
-
-
-#-----------------------------------------------------------------------
-
-#=======================================================================
-# initialisation code - stuff the DATA into the CODES hash
-#=======================================================================
-{
- @us_phone= ( 
-	     {'area_code' => 3},
-	     {'exchange'  => 3},
-	     {'number'    => 4} 
-	     );
-
- @us_ssan= ( 
-	     {'A' =>  3},
-	     {'B' =>  2},
-	     {'C' =>  4} 
-	     );
-
- @MM_DD_YYYY= ( 
-	     {'month' =>  2},
-	     {'day'   =>  2},
-	     {'year'  =>  4} 
-	     );
-
- @MM_DD_YY= ( 
-	     {'month' =>  2},
-	     {'day'   =>  2},
-	     {'year'  =>  2} 
-	     );
-
- @YY_MM_DD= ( 
-	     {'year'  =>  2},
-	     {'day'   =>  2},
-	     {'month'  =>  2} 
-	     );
-
- @YYYY_MM_DD= ( 
-	     {'year'  =>  4},
-	     {'month'   =>  2},
-	     {'day'  =>  2} 
-	     );
-
+sub names {
+   shift->{NAMES};
 }
+#=======================================================================
 
 1;
+__END__
+
 =head1 NAME
 
 Parse::FixedLength - parse a string containing fixed length fields into
@@ -131,28 +75,25 @@ component parts
 
 =head1 SYNOPSIS
 
- use Parse::FixedLength;
-
- $Parse::FixedLength::TRACE = 1; # default - print parse of each rec
+    use Parse::FixedLength;
     
-    $phone_number=8037814191;
-    parse($phone_number,
-	     \%moms_phone, 
-	     [ 
-	       { area_code => 3 } ,
-	       { exchange  => 3 } ,
-	       { number    => 4 } ] );
+    my $parser = Parse::FixedLength->new([
+        first_name => 10,
+        last_name  => 10,
+        address    => 20,
+    ]);
 
-    for (keys %moms_phone) {
-      print $_, " ", $moms_phone{$_}, $/;
-    }
+    my $data = 'Bob       Jones     1122 Main St.       ';
+    my $parsed = $parser->parse($data);
 
+    or:
 
-    # yields $moms_phone{area_code} == 803
-    #        $moms_phone{exchange}  == 781
-    #        $moms_phone{number}    == 4191
+    my $parser = Parse::FixedLength->new([qw(
+        first_name:10
+        last_name:10
+        address:20
+    )], {delim=>":"});
 
-    
 =cut
 
 =head1 DESCRIPTION
@@ -166,75 +107,65 @@ a string into its fixed-length components.
 
 =over 4
 
+=item new() 
+
+ new($aref_format, $href_parameters)
+
+This method takes an array reference of field names and
+lengths as either alternating elements, or delimited args in the
+same field.
+
+An optional hash ref may also be supplied which may contain the following:
+
+ delim - The delimiter used to separate the name and length in
+         the format array.
+
+ spaces - If true, preserve trailing spaces in the parsed output.
+
+ debug  - Print field names and values during parsing (as a quick
+          format validation check).
+
 =item parse() 
 
- parse($string_to_parse, $href_storing_parse, $LOH_parse_instructions)
+ parse($string_to_parse)
 
-This function takes a string, a reference to a hash and a reference to a 
-list of hashes and stores the results of fixed length parsing into the hash 
-reference passed in.
+This function takes a string and returns the results of
+fixed length parsing as a hash reference of field names and
+values if called in scalar context, or just a list of the
+values if called in list context.
 
-=item quick_parse()
+=item pack($href_data_to_pack) 
 
- quick_parse($string_to_parse, $href_storing_parse, $name_of_common_string)
+This function takes a hash reference and returns a fixed length format
+output string.
 
-To facilitate the parsing of certain common fixed-length strings, the
-C<quick_parse()> function takes a string, a reference to a hash in 
-which to store parsing results, and the name of the common string
-(which indexes into the %quick_parse hash to find formatting instructions).
-The currently available formatting routines are:
+=item names
 
-=item * C<@us_phone> 
-
- $phone_number=8882221234;
- Parse::FixedLength::quick_parse($phone_number, \%lncs_phone, "us_phone");
-
-=item * C<@us_ssan> 
-
-=item * C<@MM_DD_YYYY> 
-
-=item * C<@MM_DD_YY> 
-
-=item * C<@YY_MM_DD> 
-
-=item * C<@YYYY_MM_DD> 
+Return an ordered arrayref of the field names.
 
 =back
 
-=head1 IMPORTANT
-
-Be sure to watch for odd records in your input. The following example does
-not parse lines which only consist of whitespace.
-
- open D, 'data.dat';
-
- my %parse;
- while (<D>) {
-    next if /^\s*$/;
-
-    parse($_, \%parse, [
-			{ three => 3 },
-			{ '3mo' => 3 },
-			{ 'mo3' => 3 },
-			{ 'end' => 3 }
-			]);
- }
+=cut
 
 
+#=======================================================================
+
+
+
+#-----------------------------------------------------------------------
+
+=head1 EXAMPLES
+
+see SYNOPSIS
 
 =head1 AUTHOR
 
-Terrence Brannon <tbone@cpan.org>
+ Douglas Wilson <dougw@cpan.org>,
+ original by Terrence Brannon <tbone@cpan.org>
 
 =head1 COPYRIGHT
 
 This module is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
-
-
-=head1 NOTES
-
-Version 4.1 fixes a memory leak reported by bitwise of Perlmonks.org and
-fixed by runrig of Perlmonks. I am princepawn of Perlmonks, by the way.
 
 =cut
