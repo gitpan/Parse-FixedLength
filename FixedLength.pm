@@ -6,7 +6,7 @@ use strict;
 #	Public Global Variables
 #-----------------------------------------------------------------------
 use vars qw($VERSION);
-$VERSION   = '5.02';
+$VERSION   = '5.03';
 
 #=======================================================================
 sub new {
@@ -38,6 +38,9 @@ sub new {
     $self->{UNPACK} = join '', map { "$spaces$_" } @lengths;
     $self->{PACK} = join '', map { "A$_" } @lengths;
     $self->{LENGTH} = $length;
+    my %lengths;
+    @lengths{@names} = @lengths;
+    $self->{LENGTHS} = \%lengths;
     $self->{DEBUG} = 1 if $params->{'debug'};
     $self;
 }
@@ -68,7 +71,9 @@ sub names {
 }
 #=======================================================================
 sub length {
-   shift->{LENGTH};
+   my $self = shift;
+   my $field = shift or return $self->{LENGTH};
+   $self->{LENGTHS}{$field};
 }
 #=======================================================================
 
@@ -115,7 +120,7 @@ a string into its fixed-length components.
 
 =item new() 
 
- new($aref_format, $href_parameters)
+ $parser = Parser::FixedLength->new($aref_format, $href_parameters)
 
 This method takes an array reference of field names and
 lengths as either alternating elements, or delimited args in the
@@ -133,21 +138,31 @@ An optional hash ref may also be supplied which may contain the following:
 
 =item parse() 
 
- parse($string_to_parse)
+ $href_parsed_data = $parser->parse($string_to_parse)
 
 This function takes a string and returns the results of
 fixed length parsing as a hash reference of field names and
 values if called in scalar context, or just a list of the
 values if called in list context.
 
-=item pack($href_data_to_pack) 
+=item pack
+ $packed_str = $parser->pack($href_data_to_pack);
 
 This function takes a hash reference and returns a fixed length format
 output string.
 
-=item names
+=item names()
+
+ $aref_names = $parser->names;
 
 Return an ordered arrayref of the field names.
+
+=item length()
+
+ $tot_length   = $parser->length;
+ $field_length = $parser->length($field_name);
+
+Returns the total length of all the fields, or of just one field name.
 
 =back
 

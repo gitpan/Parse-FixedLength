@@ -1,5 +1,6 @@
 Revision history for Perl extension Parse::FixedLength.
-5.02  Thu Jun 28 08:04:27 PDT 2001
+5.03  Thu Jun 28 08:04:27 PDT 2001
+    - Improved documentation.
     - Added length method and more examples, took out some temp variables to
       tighten up code and obfuscate it a bit :)
 5.01  Wed Jun 27 12:06:00 PDT 2001
