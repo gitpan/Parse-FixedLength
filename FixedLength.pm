@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.24';
+$VERSION   = '5.25';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -66,13 +66,17 @@ sub new {
     $self->{UNPACK} = join '', map { "$spaces$_" } @$alengths;
     $self->{PACK} = uc($self->{UNPACK});
     $self->{LENGTH} = $length;
+    @$self{qw(TFIELDS TNAMES)} = ([], []);
     # Save justify fields no matter what for benefit of dumper()
     if (%$justify) {
         $self->{JFIELDS} = $justify;
         $self->{JUST} = 1 unless $$params{no_justify};
+        @$self{qw(TFIELDS TNAMES TPAD)} = _trim_info($self);
+        $self->{TRIM} = 1 if $$params{trim};
     }
     $self->{LENGTHS} = $hlengths;
-    $self->{DEBUG} = exists $$params{'debug'} ? $$params{'debug'} : $DEBUG;
+    $self->{DEBUG} = exists $$params{'debug'} ?
+        ref($$params{'debug'}) ? $$params{'debug'} : \*STDOUT : $DEBUG;
     $self;
 }
 
@@ -161,16 +165,32 @@ sub _chk_start_end {
         $end < $start  and confess "End position < start in field $name";
     }
 }
+
+sub _trim_info {
+    my $parser = shift;
+    my (@tfields, @tnames, @tpad);
+    my $i = 0;
+    for my $name (@{$parser->names}) {
+        if (exists $parser->{JFIELDS}{$name}) {
+            push @tfields, $i;
+            push @tnames, $name;
+            push @tpad, qr/^\Q$parser->{JFIELDS}{$name}\E+/;
+        }
+    } continue { $i++ }
+    return \@tfields, \@tnames, \@tpad;
+}
+
 #=======================================================================
 sub parse {
     my $parser = shift;
     my @parsed = unpack($parser->{UNPACK}, shift);
-    if ($parser->{DEBUG}) {
-     print "# Debug parse\n";
+    $parser->trim(@parsed) if $parser->{TRIM};
+    if (my $fh = $parser->{DEBUG}) {
+     print $fh "# Debug parse\n";
      for my $i (0..$#{$parser->{NAMES}}) {
-         print "[$parser->{NAMES}[$i]][$parsed[$i]]\n";
+         print $fh "[$parser->{NAMES}[$i]][$parsed[$i]]\n";
      }
-     print "\n";
+     print $fh "\n";
     }
     return @parsed if wantarray;
     my %parsed;
@@ -199,6 +219,16 @@ sub pack {
      print "\n";
     }
     CORE::pack $parser->{PACK}, @$href{@{$parser->{NAMES}}};
+}
+#=======================================================================
+sub trim {
+    my $self = shift;
+    my $i;
+    if (ref($_[0])) {
+        $$_{$_} =~ s/$self->{TPAD}[$i++]// for @{$self->{TNAMES}};
+    } else {
+        $_[$_] =~ s/$self->{TPAD}[$i++]// for @{$self->{TFIELDS}};
+    }
 }
 #=======================================================================
 sub names { shift->{NAMES} }
@@ -419,9 +449,13 @@ The optional second argument to new is a hash ref which may contain any of the f
           are not correct.  If this option is true, then the start and
           end are not validated.
 
- debug  - Print field names and values during parsing and packing
-          (as a quick format validation check). The package variable
-          DEBUG may also be used.
+ trim   - If true, trim leading pad characters from fields during parse.
+
+ debug  - If true, print field names and values during parsing and
+          packing (as a quick format validation check). The package
+          variable DEBUG may also be used. If a non-reference
+          argument is given, output is sent to STDOUT, otherwise we
+          assume we have a filehandle open for writing.
 
 =item parse() 
 
@@ -439,6 +473,15 @@ values if called in list context.
 
 This function takes a hash reference of field names and values and
 returns a fixed length format output string.
+
+=item names()
+
+ $parser->trim(@data);
+ $parser->trim(\%data);
+
+This function trims leading pad characters from the data. It is the
+method implicitly called during the parse method when the 'trim' option
+is set in new(). The data passed is modified, so there is no return value.
 
 =item names()
 

@@ -1,4 +1,7 @@
 Revision history for Perl extension Parse::FixedLength.
+5.25  Mon Sep 24 17:00:00  2001
+    - Added trim option to new method. Added test.
+    - Allow filehandle to be passed to debug option.
 5.24  Wed Sep 19 17:00:00  2001
     - Added all_lengths option to parser new() method.
     - Changed subclass*.t tests so that the test module doesn't show up
