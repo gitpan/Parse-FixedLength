@@ -1,4 +1,6 @@
 Revision history for Perl extension Parse::FixedLength.
+5.09  Fri Jul 27 Not much later...
+    - Eval anonymous subs in convert() for better error reporting.
 5.08  Fri Jul 27 18:31:02 PDT 2001
     - Some doc fixes.
     - Various changes after a code review with Graham Barr at TPC,

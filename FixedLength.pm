@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.08';
+$VERSION   = '5.09';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -222,7 +222,11 @@ sub convert {
     # Default/Convert the fields
     while (my ($name, $default) = each %$defaults) {
         $data_out{$name} = ref $default
-          ? $default->($data_out{$name}, $data_in) : $default;
+          ? do {
+            my $tmp = eval { $default->($data_out{$name}, $data_in) };
+            croak "Failed to default field $name: $@" if $@;
+            $tmp;
+          } : $default;
     }
     $packer->pack(\%data_out);
 }
