@@ -27,12 +27,12 @@ print $not unless defined $parser1;
 print "ok 2\n";
 
 my $parser2 = Parse::FixedLength->new([
-    seq_id     => 10,
-    first_name => 10,
-    last_name  => 10,
-    country    =>  3,
-    widgets_this_year => '10R',
-    zip => 10,
+    seq_id     => '10:1:10',
+    first_name => '10:11:20',
+    last_name  => '10:21:30',
+    country    =>  '3:31:33',
+    widgets_this_year => '10R:34:43',
+    zip => '10:44:53',
 ]);
 
 print $not unless defined $parser2;

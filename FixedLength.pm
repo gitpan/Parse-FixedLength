@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.10';
+$VERSION   = '5.11';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -31,7 +31,7 @@ sub new {
                 grep { not $_ % 2 } 0..$#$format
               ] if $is_hsh;
     my ($names, $lengths, $justify, $length) =
-        _parse_format($format, $delim, $delim_re, ! $$params{no_validate});
+        _parse_format($format, $delim_re, ! $$params{no_validate});
 
     $self->{NAMES} = $names;
     $self->{UNPACK} = join '', map { "$spaces$_" } @$lengths;
@@ -62,8 +62,7 @@ sub _chk_format_type {
     for my $i (0..$#$format) {
         my $field = $$format[$i];
         if ($field =~ $delim) {
-            croak "Field $field contains delimiter"
-                if $is_hsh and not @$format % 2;
+            croak "Field $field contains delimiter" if $is_hsh and not $i % 2;
         } else { croak "Field $field is missing delimiter" unless $is_hsh }
     }
     return $is_hsh;
@@ -93,7 +92,7 @@ sub _parse_format {
 sub _chk_start_end {
     my ($name, $prev, $start, $end) = @_;
     if (defined($start) && defined($end)) {
-        croak "Bad start position at field $name" unless $start == $prev+1;
+        croak "Bad start position at field $name" unless $start == $prev;
         croak "End position is less than start at field $name" if $end < $start;
     }
 }
@@ -307,18 +306,25 @@ the data in the hash ref argument.
 
 An optional hash ref may also be supplied which may contain the following:
 
- delim - The delimiter used to separate the name and length in
-         the format array. If another delimiter follows the length
-         then any 'extra' fields are ignored (though I may reserve
-         the next two fields for start and end position and use them
-         for validation purposes). Default delimiter is ":";
+ delim - The delimiter used to separate the name and length in the
+         format array. If another delimiter follows the length then
+         the next two fields are assumed to be start and end position,
+         and after that any 'extra' fields are ignored.  The default
+         delimiter is ":". The package variable DELIM may also be used.
 
  spaces - If true, preserve trailing spaces during parse.
 
  no_justify - If true, ignore the "R" format option during pack.
 
+ no_validate - By default, if two fields exist after the length argument
+          in the format (delimited by whatever delimiter is set), then
+          they are assumed to be the start and end position (starting at 1),
+          of the field, and these fields are validated to be correct.
+          If this option is true, then the start and end are not validated.
+
  debug  - Print field names and values during parsing (as a quick
-          format validation check).
+          format validation check). The package variable DEBUG may also be
+          used.
 
 =item parse() 
 

@@ -17,10 +17,10 @@ print "ok 1\n";
 my $not = 'not ';
 
 my $parser = Parse::FixedLength->new([qw(
- first_name:10:morestuff
- last_name:10
- address:20
-)]);
+ first_name^10
+ last_name^10
+ address^20
+)], {delim=>"^"});
 
 print $not unless defined $parser;
 print "ok 2\n";

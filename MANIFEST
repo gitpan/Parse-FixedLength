@@ -6,4 +6,6 @@ Makefile.PL
 t/base.t
 t/convert.t
 t/default.t
+t/delim.t
 t/space.t
+t/validate.t

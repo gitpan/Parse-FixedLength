@@ -1,4 +1,8 @@
 Revision history for Perl extension Parse::FixedLength.
+5.11  Mon Jul 30 Later on...
+    - Added more tests.
+    - Fixed 'no_validate' option (which wasn't documented yet anyway, along
+      with the start/end validation in general. Add info to docs about this.
 5.10  Mon Jul 30 08:47:49 PDT 2001
     - Fixed doc examples.
     - Added more tests.
