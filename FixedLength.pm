@@ -6,8 +6,9 @@ use strict;
 #	Public Global Variables
 #-----------------------------------------------------------------------
 use Carp;
+use Scalar::Util qw(reftype);
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.11';
+$VERSION   = '5.12';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -18,7 +19,11 @@ sub new {
     my $class = ref($proto) || $proto;
     my $self = bless {}, $class;
     my $format = shift;
+    croak "Format argument not an array ref"
+        unless (reftype($format) || '') eq 'ARRAY';
     my $params = shift;
+    croak "Params argument not a hash ref"
+        if $params and (reftype($params) || '') eq 'ARRAY';
     my $delim = exists $params->{'delim'} ? $params->{'delim'} : $DELIM;
     $self->{DELIM} = $delim;
     my $delim_re = qr/\Q$delim/;
@@ -30,11 +35,11 @@ sub new {
     $format = [ map  { $$format[$_].$delim.$$format[$_+1] }
                 grep { not $_ % 2 } 0..$#$format
               ] if $is_hsh;
-    my ($names, $lengths, $justify, $length) =
-        _parse_format($format, $delim_re, ! $$params{no_validate});
+    my ($names, $alengths, $hlengths, $justify, $length) =
+        _parse_format($format, $delim_re, $params);
 
     $self->{NAMES} = $names;
-    $self->{UNPACK} = join '', map { "$spaces$_" } @$lengths;
+    $self->{UNPACK} = join '', map { "$spaces$_" } @$alengths;
     $self->{PACK} = uc($self->{UNPACK});
     $self->{LENGTH} = $length;
     # Save justify fields no matter what for benefit of dumper()
@@ -42,9 +47,7 @@ sub new {
         $self->{JFIELDS} = $justify;
         $self->{JUST} = 1 unless $$params{no_justify};
     }
-    my %lengths;
-    @lengths{@$names} = @$lengths;
-    $self->{LENGTHS} = \%lengths;
+    $self->{LENGTHS} = $hlengths;
     $self->{DEBUG} = exists $$params{'debug'} ? $$params{'debug'} : $DEBUG;
     $self;
 }
@@ -69,24 +72,57 @@ sub _chk_format_type {
 }
 
 sub _parse_format {
-    my ($format, $delim, $validate) = @_;
+    my ($format, $delim, $params) = @_;
+    my (@names, @lengths, %lengths, %justify, %dups);
+    my $dups_ok = $$params{autonum};
+    my $all_dups_ok;
+    if ($dups_ok) {
+        if ((reftype($dups_ok) || '') eq 'ARRAY') {
+            @dups{@$dups_ok} = undef;
+        } else { $all_dups_ok = 1 }
+    }
     my $length = 0;
-    my (@names, @lengths, %justify);
     my $nxt = 1;
     for (@$format) {
         my ($name, $tmp_len, $start, $end) = split $delim;
-        _chk_start_end($name, $nxt, $start, $end) if $validate;
+        _chk_start_end($name, $nxt, $start, $end) unless $$params{no_validate};
+        $name = _chk_dups(
+            $name, \@names, \%lengths, \%justify, \%dups, $dups_ok, $all_dups_ok
+        );
         push @names, $name;
         # The results of the inner-parens is not guaranteed unless the
         # outer parens match, so we do it this way
         my ($len, $is_just, $chr) = $tmp_len =~ /^(\d+)((?:R(.?))?)$/
             or croak "Bad length $tmp_len for field $name";
+        $len > 0 or croak "Length must be > 0 for field $name";
         $justify{$name} = ($chr eq '') ? ' ' : $chr if $is_just;
+        $lengths{$name} = $len;
         push @lengths, $len;
         $length += $len;
         $nxt = $end + 1 if defined $end;
     }
-    return \@names, \@lengths, \%justify, $length;
+    return \@names, \@lengths, \%lengths, \%justify, $length;
+}
+
+sub _chk_dups {
+    my ($name, $names, $lengths, $justify, $dups, $dups_ok, $all_dups_ok) = @_;
+    if (exists $$lengths{$name}) {
+        croak "Duplicate field $name in format" 
+            if !$dups_ok or !$all_dups_ok && !exists $$dups{$name};
+    } else { return $name unless $$dups{$name} }
+    # If this is the first duplicate found, fix the previous field
+    unless ($$dups{$name}) {
+        my $new_name = "${name}_".++$$dups{$name};
+        croak "Can't autonumber field $name" if exists $$lengths{$new_name};
+        for (@$names) { $_ = $new_name if $_ eq $name }
+        $$lengths{$new_name} = $$lengths{$name};
+        delete $$lengths{$name};
+        if (exists $$justify{$name}) {
+            $$justify{$new_name} = $$justify{$name};
+            delete $$justify{$name};
+        }
+    }
+    return "${name}_".++$$dups{$name};
 }
 
 sub _chk_start_end {
@@ -194,8 +230,8 @@ sub new {
    my $type = reftype($mappings) || '';
    croak 'Map arg not a hash or array ref' unless $type =~ /^(HASH|ARRAY)$/;
    $self->{MAP} = { reverse $type eq 'HASH' ? %$mappings : @$mappings };
-   $type = reftype($defaults) || '';
-   croak 'Defaults arg not a hash ref' unless $type eq 'HASH';
+   croak 'Defaults arg not a hash ref'
+     unless (reftype($defaults) || '') eq 'HASH';
    $self->{DEFAULTS} = $defaults;
    $self;
 }
@@ -208,8 +244,8 @@ sub convert {
     my $map_to   = $converter->{MAP};
     my $defaults = $converter->{DEFAULTS};
 
-    my $type = reftype($data_in) || '';
-    $data_in = $unpacker->parse($data_in) unless $type eq 'HASH';
+    $data_in = $unpacker->parse($data_in)
+        unless (reftype($data_in) || '') eq 'HASH';
     my $names_out = $packer->names;
 
     # Map the data from input to output
@@ -312,6 +348,15 @@ An optional hash ref may also be supplied which may contain the following:
          and after that any 'extra' fields are ignored.  The default
          delimiter is ":". The package variable DELIM may also be used.
 
+ autonum - This option controls the behavior of new() when duplicate field
+         names are found. Normally the a fatal error will be generated if
+         duplicate field names are found. If you have, e.g., some unused
+         filler fields, then as the value to this option, you can either
+         supply an arrayref containing valid duplicate names or a simple
+         true value to accept all duplicate values. If there is
+         more than one duplicate field, then when parsed, they will be
+         renamed '<name>_1', '<name>_2', etc.
+
  spaces - If true, preserve trailing spaces during parse.
 
  no_justify - If true, ignore the "R" format option during pack.
@@ -319,7 +364,8 @@ An optional hash ref may also be supplied which may contain the following:
  no_validate - By default, if two fields exist after the length argument
           in the format (delimited by whatever delimiter is set), then
           they are assumed to be the start and end position (starting at 1),
-          of the field, and these fields are validated to be correct.
+          of the field, and these fields are validated to be correct, and
+          a fatal error will be generated if they are not correct.
           If this option is true, then the start and end are not validated.
 
  debug  - Print field names and values during parsing (as a quick

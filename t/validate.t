@@ -16,7 +16,7 @@ print "ok 1\n";
 my $not = 'not ';
 
 # Bad start-end at last_name, but don't we don't care
-my $parser1 = Parse::FixedLength->new([
+my $parser = Parse::FixedLength->new([
     seq_id     => '10:1:10',
     first_name => '10:11:20',
     last_name  => '10:22:30',
@@ -25,11 +25,11 @@ my $parser1 = Parse::FixedLength->new([
     zip => '10:44:53',
 ], {no_validate=>1});
 
-print $not unless $parser1;
+print $not unless $parser;
 print "ok 2\n";
 
 # Same bad format, but we do care
-my $parser = eval { Parse::FixedLength->new([
+$parser = eval { Parse::FixedLength->new([
     seq_id     => '10:1:10',
     first_name => '10:11:20',
     last_name  => '10:22:30',
@@ -38,5 +38,5 @@ my $parser = eval { Parse::FixedLength->new([
     zip => '10:44:53',
 ]) };
 
-print $not unless $@;
+print $not unless $@ and $@ =~ /Bad start position/;
 print "ok 3\n";

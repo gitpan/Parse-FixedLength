@@ -1,4 +1,8 @@
 Revision history for Perl extension Parse::FixedLength.
+5.12  Wed Aug  1 08:31:10 PDT 2001
+    - More error checking, this time for duplicate fields in the format, and
+      an option to get around that problem.
+    - Added tests for new option.
 5.11  Mon Jul 30 Later on...
     - Added more tests.
     - Fixed 'no_validate' option (which wasn't documented yet anyway, along
