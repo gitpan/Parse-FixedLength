@@ -8,3 +8,5 @@ TO INSTALL:
  make
  make test
  make install
+
+See the perldocs and the tests (in the t directory) for examples.

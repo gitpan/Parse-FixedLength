@@ -8,7 +8,7 @@ use strict;
 use Carp;
 use Scalar::Util qw(reftype);
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.12';
+$VERSION   = '5.14';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -104,6 +104,8 @@ sub _parse_format {
     return \@names, \@lengths, \%lengths, \%justify, $length;
 }
 
+# Check for duplicate field name, and if a duplicate,
+# either die or return new autonumbered field name
 sub _chk_dups {
     my ($name, $names, $lengths, $justify, $dups, $dups_ok, $all_dups_ok) = @_;
     if (exists $$lengths{$name}) {
@@ -127,9 +129,12 @@ sub _chk_dups {
 
 sub _chk_start_end {
     my ($name, $prev, $start, $end) = @_;
-    if (defined($start) && defined($end)) {
-        croak "Bad start position at field $name" unless $start == $prev;
-        croak "End position is less than start at field $name" if $end < $start;
+    if (defined $start) {
+        $start =~ /^\d+$/ or croak "Start position not a number in field $name";
+        $start == $prev   or croak "Bad start position in field $name";
+        defined $end      or croak "End position missing in field $name";
+        $end =~ /^\d+$/   or croak "End position not a number in field $name";
+        $end < $start    and croak "End position < start in field $name";
     }
 }
 #=======================================================================
@@ -480,10 +485,12 @@ Converts a string or a hash reference from one fixed length format to another.
 
     use Parse::FixedLength;
 
+    # Include start and end position for extra check
+    # of format integrity
     my $parser = Parse::FixedLength->new([
-        first_name => 10,
-        last_name  => 10,
-        widgets_this_month => '5R0',
+        first_name => '10:1:10',
+        last_name  => '10:11:20',
+        widgets_this_month => '5R0:21:25',
     ]);
 
     # Do a simple name casing of names

@@ -17,7 +17,7 @@ print "ok 1\n";
 my $not = 'not ';
 
 my $parser = Parse::FixedLength->new([qw(
- first_name:10:morestuff
+ first_name:10
  last_name:10
  address:20
 )]);
