@@ -1,5 +1,5 @@
 Revision history for Perl extension Parse::FixedLength.
-5.17  Fri Aug 17 19:25:22  2001
+5.18  Fri Aug 17 19:25:22  2001
     - Fixed dumper() for hash-like format with right justification. Thanks
       to John Cotter for the catch.
 5.16  Mon Aug 13 20:19:36  2001

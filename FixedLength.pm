@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.17';
+$VERSION   = '5.18';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -193,7 +193,7 @@ sub dumper {
     my $end;
     my $delim = $parser->{DELIM};
     my $format = $pos_comment
-       ? sub { sprintf("%s => %s, # %s-%s", @_) }
+       ? sub { sprintf("%s => '%s', # %s-%s", @_) }
        : $parser->{IS_HSH}
          ? sub { sprintf("%s => '%s${delim}%s${delim}%s',", @_) }
          : sub { join $delim, @_ };
@@ -206,7 +206,6 @@ sub dumper {
           ? $jfields->{$name} eq ' ' ? 'R' : "R$jfields->{$name}"
           : '';
         $len .= $just;
-        $len = qq('$len') if $just and ($parser->{IS_HSH} or $pos_comment);
         $layout .= $format->($name, $len, $start, $end) . "\n";
         $start = $end + 1;
     }
