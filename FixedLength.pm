@@ -6,7 +6,7 @@ use strict;
 #	Public Global Variables
 #-----------------------------------------------------------------------
 use vars qw($VERSION);
-$VERSION   = '5.04';
+$VERSION   = '5.05';
 
 #=======================================================================
 sub new {
@@ -88,6 +88,7 @@ sub pack {
     if ($parser->{JUST}) {
         while (my ($name, $chr) =  each %{$parser->{JFIELDS}}) {
             (my $field = $$href{$name}) =~ s/^\s+|\s+$//g;
+            $field =~ s/^${chr}+// if $chr ne ' ';
             my $len = $parser->length($name);
             $$href{$name} = $chr x ($len-length($field)) . $field;
         }
