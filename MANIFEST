@@ -12,6 +12,7 @@ t/default.t
 t/delim.t
 t/importall.t
 t/nopack.t
+t/packfmt.t
 t/space.t
 t/subclass1.t
 t/subclass2.t

@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.31';
+$VERSION   = '5.32';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -80,12 +80,12 @@ sub new {
     $format = [ map  { $$format[$_].$delim.$$format[$_+1] }
                 grep { not $_ % 2 } 0..$#$format
               ] if $is_hsh;
-    my ($names, $alengths, $hlengths, $justify, $length) =
+    my ($names, $alengths, $hlengths, $justify, $length, $fmts) =
         _parse_format($format, $delim_re, $params);
 
     $self->{NAMES} = $names;
-    $self->{UNPACK} = join '', map { "$spaces$_" } @$alengths;
-    $self->{PACK} = uc($self->{UNPACK});
+    $self->{UNPACK} = join '', @{$fmts}{@$names};
+    ( $self->{PACK} = $self->{UNPACK} ) =~ tr/a/A/;
     $self->{LENGTH} = $length;
     @$self{qw(TFIELDS TNAMES)} = ([], []);
     # Save justify fields no matter what for benefit of dumper()
@@ -96,6 +96,7 @@ sub new {
         $self->{TRIM} = 1 if $$params{trim};
     }
     $self->{LENGTHS} = $hlengths;
+    $self->{FMTS} = $fmts;
     $self->{DEBUG} = exists $$params{'debug'} ?
         ref($$params{'debug'}) ? $$params{'debug'} : \*STDOUT : $DEBUG;
 
@@ -128,7 +129,7 @@ sub _chk_format_type {
 
 sub _parse_format {
     my ($format, $delim, $params) = @_;
-    my (@names, @lengths, %lengths, %justify, %dups);
+    my (@names, @lengths, %lengths, %justify, %dups, %fmts);
     my $dups_ok = $$params{autonum};
     my $all_dups_ok;
     if ($dups_ok) {
@@ -142,27 +143,57 @@ sub _parse_format {
         my ($name, $tmp_len, $start, $end) = split $delim;
         _chk_start_end($name, $nxt, $start, $end) unless $$params{no_validate};
         $name = _chk_dups(
-            $name, \@names, \%lengths, \%justify, \%dups, $dups_ok, $all_dups_ok
+            $name, \@names, \%fmts,
+            \%lengths, \%justify, \%dups, $dups_ok, $all_dups_ok
         );
         push @names, $name;
         # The results of the inner-parens is not guaranteed unless the
         # outer parens match, so we do it this way
-        my ($len, $is_just, $chr) = $tmp_len =~ /^(\d+)((?:R(.?))?)$/
-            or confess "Bad length $tmp_len for field $name";
-        $len > 0 or confess "Length must be > 0 for field $name";
-        $justify{$name} = ($chr eq '') ? ' ' : $chr if $is_just;
-        $lengths{$name} = $len;
-        push @lengths, $len;
-        $length += $len;
-        $nxt = $end + 1 if defined $end;
+        if ( $tmp_len =~ /^\d/ ) {
+          my ($len, $is_just, $chr) = $tmp_len =~ /^(\d+)((?:R(.?))?)$/
+              or confess "Bad length $tmp_len for field $name";
+          $len > 0 or confess "Length must be > 0 for field $name";
+          $justify{$name} = ($chr eq '') ? ' ' : $chr if $is_just;
+          $lengths{$name} = $len;
+          push @lengths, $len;
+          $length += $len;
+          $nxt = $end + 1 if defined $end;
+          $fmts{$name} = ( $params->{spaces} ? "a" : "A" ) . $len;
+        } elsif ( $tmp_len =~ /^(\w)((?:\d+)?)$/ ) {
+          my ($type, $repeat) = ($1, $2);
+          my $len = $type =~ /[AaZ]/ && $repeat
+                 || $type =~ /b/i && int((($repeat/16)-.01) + 1)
+                 || $type =~ /h/i && int((($repeat/2)-.01) + 1)
+                 || $type =~ /cC/i && 1
+                 || $type =~ /[sSnv]/ && 2
+                 || $type =~ /[lLNV]/ && 4
+                 || $type =~ /q/i && 8
+                 || undef;
+          $length += $len;
+          $lengths{$name} = $len;
+          push @lengths, $len;
+          $nxt = $end + 1 if defined $end;
+          $fmts{$name} = $tmp_len;
+        } else {
+          unless ( eval {
+            my @foo = unpack($tmp_len, "junk"); 
+            die "Too Many fields" unless @foo == 1;
+            1;
+          })
+          {
+            confess "Bad format $tmp_len for field $name";
+          }
+          $fmts{$name} = $tmp_len;
+        }
     }
-    return \@names, \@lengths, \%lengths, \%justify, $length;
+    return \@names, \@lengths, \%lengths, \%justify, $length, \%fmts;
 }
 
 # Check for duplicate field name, and if a duplicate,
 # either die or return new autonumbered field name
 sub _chk_dups {
-    my ($name, $names, $lengths, $justify, $dups, $dups_ok, $all_dups_ok) = @_;
+    my ($name, $names, $fmts, $lengths,
+        $justify, $dups, $dups_ok, $all_dups_ok) = @_;
     if (exists $$lengths{$name}) {
         confess "Duplicate field $name in format" 
             if !$dups_ok or !$all_dups_ok && !exists $$dups{$name};
@@ -174,6 +205,8 @@ sub _chk_dups {
         for (@$names) { $_ = $new_name if $_ eq $name }
         $$lengths{$new_name} = $$lengths{$name};
         delete $$lengths{$name};
+        $$fmts{$new_name} = $$fmts{$name};
+        delete $$fmts{$name};
         if (exists $$justify{$name}) {
             $$justify{$new_name} = $$justify{$name};
             delete $$justify{$name};
@@ -486,6 +519,30 @@ during operations such as math or converting format lengths. If its
 not needed but you'd like to specify it anyway for documentation
 purposes, you can use the no_justify option below. Also, it does change
 the data in the hash ref argument.
+
+New (and barely tested): The length of the field may also be any valid
+format string for the perl functions pack/unpack which would return
+a single element.  E.g., this is valid:
+
+    my $parser = Parse::FixedLength->new([qw(
+        first_name:10:1:10
+        last_name:10:11:20
+        address:20:21:40
+        flags:B16:41:42
+    )]);
+
+But this is not valid since 'flags' would return 2 elements:
+
+    my $parser = Parse::FixedLength->new([qw(
+        first_name:10:1:10
+        last_name:10:11:20
+        address:20:21:40
+        flags:C2:41:42
+    )]);
+
+If a format without a known fixed length is used, then the
+length method, and start and end positions in the format
+should not be used.
 
 The optional second argument to new is a hash ref which may contain
 any of the following keys:

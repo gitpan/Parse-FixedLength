@@ -1,4 +1,6 @@
 Revision history for Perl extension Parse::FixedLength.
+5.32  Fri Jun 11 17:00:00  2004
+    - Allow any valid pack()/unpack() format in the length field
 5.31  Tue Jun 8 17:00:00  2004
     - To autoload an lvalue method, AUTOLOAD must be
       declared as an lvalue method.
