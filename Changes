@@ -1,4 +1,6 @@
 Revision history for Perl extension Parse::FixedLength.
+5.35  Sat May 20 01:00:00  2005
+    - Updated Manifest. Someday I'll automate this.
 5.34  Fri May 20 11:00:00  2005
     - Added parse_hash(), and parse_newref() convenience methods.
       Inspired by rt ticket by Curtis "Mr_Person" Hawthorne.

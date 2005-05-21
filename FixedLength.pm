@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.34';
+$VERSION   = '5.35';
 $DELIM = ":";
 $DEBUG = 0;
 
