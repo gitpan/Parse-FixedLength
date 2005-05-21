@@ -1,4 +1,8 @@
 Revision history for Perl extension Parse::FixedLength.
+5.34  Fri May 20 11:00:00  2005
+    - Added parse_hash(), and parse_newref() convenience methods.
+      Inspired by rt ticket by Curtis "Mr_Person" Hawthorne.
+    - Fixes to pod, and addition of pod tests.
 5.33  Wed Jul 21 17:00:00  2004
     - Second hash_to_obj call with same keys as first wasn't working.
     - Fixed tests (changed 'ref' to 'isa') which broke after previous change.

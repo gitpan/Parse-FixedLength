@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.33';
+$VERSION   = '5.34';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -16,13 +16,13 @@ sub import {
     my $proto = shift;
     my $class = ref($proto) || $proto;
     for (@_) {
-        $class->import($class->all_modules()), last if $_ eq ':all';
+        $class->import($class->_all_modules()), last if $_ eq ':all';
         eval "use ${class}::$_";
         confess $@ if $@;
     }
 }
 
-sub all_modules {
+sub _all_modules {
     my $self = shift;
     eval "use File::Spec";
     confess $@ if $@;
@@ -255,6 +255,13 @@ sub parse {
      print $fh "\n";
     }
     wantarray ? @$data{@$names} : $data;
+}
+#=======================================================================
+sub parse_hash {
+  return %{ scalar(shift->parse(@_)) };
+}
+sub parse_newref {
+  return { shift->parse_hash(@_) };
 }
 #=======================================================================
 sub pack {
@@ -553,9 +560,7 @@ any of the following keys:
 
 =over 4
 
-=item *
-
-=head3 delim 
+=item delim
 
 The delimiter used to separate the name and length in the
 format array. If another delimiter follows the length then
@@ -564,17 +569,13 @@ and after that any 'extra' fields are ignored.  The package variable
 DELIM may also be used.
 (default: ":")
 
-=item *
-
-=head3 no_bless
+=item no_bless
 
 Do not bless the hash ref returned from the parse method into
 a Hash-As-Object package.
 (default: false)
 
-=item *
-
-=head3 all_lengths
+=item all_lengths
 
 This option ignores any lengths supplied in the format
 argument (or allows having no length args in the format), and
@@ -584,9 +585,7 @@ help facilitate converting from a non-fixed length format (where
 you just have field names) to a fixed-length format.
 (default: false)
 
-=item *
-
-=head3 autonum
+=item autonum
 
 This option controls the behavior of new() when duplicate
 field names are found. By default a fatal error will be
@@ -598,23 +597,17 @@ values. If there is more than one duplicate field, then when
 parsed, they will be renamed '<name>_1', '<name>_2', etc.
 (default: false)
 
-=item *
-
-=head3 spaces
+=item spaces
 
 If true, preserve trailing spaces during parse.
 (default: false)
 
-=item *
-
-=head3 no_justify
+=item no_justify
 
 If true, ignore the "R" format option during pack.
 (default: false)
 
-=item *
-
-=head3 no_validate
+=item no_validate
 
 By default, if two fields exist after the length
 argument in the format (delimited by whatever delimiter is
@@ -625,23 +618,19 @@ are not correct.  If this option is true, then the start and
 end are not validated.
 (default: false)
 
-=item *
-
-=head3 trim
+=item trim
 
 If true, trim leading pad characters from fields during parse.
 (default: false)
 
-=item *
-
-=head3 debug
+=item debug
 
 If true, print field names and values during parsing and
 packing (as a quick format validation check). The package
 variable DEBUG may also be used. If a non-reference
 argument is given, output is sent to STDOUT, otherwise we
 assume we have a filehandle open for writing.
-(default: true)
+(default: false)
 
 =back
 
@@ -662,6 +651,24 @@ or you can use methods:
 
     $href->key = "value";
     print $href->key,"\n";
+
+For efficiency, the same hash reference is returned on each parse.
+If this is not acceptable, look into L</parse_newref> or L</parse_hash>.
+See L<CAVEATS>.
+
+=head2 parse_hash() 
+
+ %hash = $parser->parse_hash($string)
+
+Same as parse, but returns a hash array instead of a hash reference.
+
+=head2 parse_newref() 
+
+ $hash_ref = $parser->parse_newref($string)
+
+Same as parse, but returns a different hash reference on every call,
+and the reference returned is not an object, just a plain old
+hashref.
 
 =head2 pack()
 
@@ -777,9 +784,7 @@ contain the following:
 
 =over 4
 
-=item *
-
-=head3 no_pack
+=item no_pack
 
 If true, the convert() method will return a hash reference
 instead of packing the data into an ascii string
@@ -897,20 +902,31 @@ If a second argument is supplied, it will override the converter's no_pack optio
 
 =head1 CAVEATS
 
+Mentioned in the documentation for L</parse>, repeated here:
+
 For efficiency, a parser object will return the same hash reference
-on every call to parse. Therefore, any code such as this:
+on every call to parse. Therefore, any code such as this
+which tries to save every record will not work:
 
     while (<>) {
         my $href = $parser->parse($_);
         push @array, $href; # Refers to same hash every time
     }
 
-should be changed to this:
+and should be changed to this:
+
+    while (<>) {
+        my $href = $parser->parse_newref($_);
+        push @array, $href;
+    }
+
+or this:
 
     while (<>) {
         my $href = $parser->parse($_);
-        push @array, { %$href }; # Copy contents of hash
+        push @array, { %$href };
     }
+
 
 =head1 AUTHOR
 
