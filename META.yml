@@ -1,7 +1,7 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Parse-FixedLength
-version:      5.35
+version:      5.36
 version_from: FixedLength.pm
 installdirs:  site
 requires:

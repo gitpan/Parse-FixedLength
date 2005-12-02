@@ -1,4 +1,7 @@
 Revision history for Perl extension Parse::FixedLength.
+5.36  Thu Dec  1 16:00:00  2006
+    - Was not always checking correctness of length/start/end.
+      Added test and fixed test error triggered by this fix.
 5.35  Sat May 20 01:00:00  2005
     - Updated Manifest. Someday I'll automate this.
 5.34  Fri May 20 11:00:00  2005

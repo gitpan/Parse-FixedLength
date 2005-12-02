@@ -20,7 +20,7 @@ my $parser = Parse::FixedLength->new([qw(
  first_name:10:1:10
  flags:B8:11:11
  last_name:10:12:21
- address:20:22:31
+ address:20:22:41
 )]);
 
 print $not unless defined $parser;

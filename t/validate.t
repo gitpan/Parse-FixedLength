@@ -6,7 +6,7 @@
 # Change 1..1 below to 1..last_test_to_print .
 # (It may become useful if the test is moved to ./t subdirectory.)
 
-BEGIN { $| = 1; print "1..3\n"; }
+BEGIN { $| = 1; print "1..4\n"; }
 END {print "not ok 1\n" unless $loaded;}
 use Parse::FixedLength;
 $loaded = 1;
@@ -40,3 +40,16 @@ $parser = eval { Parse::FixedLength->new([
 
 print $not unless $@ and $@ =~ /Bad start position/;
 print "ok 3\n";
+
+# Another bad format, error in end
+$parser = eval { Parse::FixedLength->new([
+    seq_id     => '10:1:10',
+    first_name => '10:11:20',
+    last_name  => '10:21:29',
+    country    =>  '3:31:33',
+    widgets_this_year => '10R:34:43',
+    zip => '10:44:53',
+]) };
+
+print $not unless $@ and $@ =~ /Bad length/;
+print "ok 4\n";

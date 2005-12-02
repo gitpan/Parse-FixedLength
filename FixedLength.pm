@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.35';
+$VERSION   = '5.36';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -153,6 +153,12 @@ sub _parse_format {
           my ($len, $is_just, $chr) = $tmp_len =~ /^(\d+)((?:R(.?))?)$/
               or confess "Bad length $tmp_len for field $name";
           $len > 0 or confess "Length must be > 0 for field $name";
+          unless ( $$params{no_validate} ) {
+            if (defined $end) {
+              confess "Bad length or end for field $name"
+                unless $end == $start + $len - 1;
+            }
+          }
           $justify{$name} = ($chr eq '') ? ' ' : $chr if $is_just;
           $lengths{$name} = $len;
           push @lengths, $len;
@@ -169,6 +175,12 @@ sub _parse_format {
                  || $type =~ /[lLNV]/ && 4
                  || $type =~ /q/i && 8
                  || undef;
+          unless ( $$params{no_validate} ) {
+            if (defined $end) {
+              confess "Bad length or end for field $name"
+                unless $end == $start + $len - 1;
+            }
+          }
           $length += $len;
           $lengths{$name} = $len;
           push @lengths, $len;
