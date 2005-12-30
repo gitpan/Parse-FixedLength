@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.36';
+$VERSION   = '5.37';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -170,7 +170,7 @@ sub _parse_format {
           my $len = $type =~ /[AaZ]/ && $repeat
                  || $type =~ /b/i && int((($repeat/16)-.01) + 1)
                  || $type =~ /h/i && int((($repeat/2)-.01) + 1)
-                 || $type =~ /cC/i && 1
+                 || $type =~ /c/i && 1
                  || $type =~ /[sSnv]/ && 2
                  || $type =~ /[lLNV]/ && 4
                  || $type =~ /q/i && 8
