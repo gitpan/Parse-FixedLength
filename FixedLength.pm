@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.38';
+$VERSION   = '5.39';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -279,7 +279,7 @@ sub parse_newref {
 #=======================================================================
 sub pack {
     my $parser = shift;
-    my $href = shift;
+    my $href = shift || $parser->{DATA};
     if ($parser->{JUST}) {
         while (my ($name, $chr) =  each %{$parser->{JFIELDS}}) {
             (my $field = $$href{$name}) =~ s/^\s+|\s+$//g;
@@ -582,6 +582,12 @@ and after that any 'extra' fields are ignored.  The package variable
 DELIM may also be used.
 (default: ":")
 
+=item href
+
+A hash reference to parse the data into. Also, if no argument is passed
+to the pack method, the default hash reference used to pack the
+data into a fixed length string.
+
 =item no_bless
 
 Do not bless the hash ref returned from the parse method into
@@ -689,6 +695,9 @@ hashref.
 
 This method takes a hash reference of field names and values and
 returns a fixed length format output string.
+
+If no argument is passed, then the hash reference used in the
+href option of the constructor is used.
 
 =head2 hash_to_obj()
 

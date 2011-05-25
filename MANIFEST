@@ -11,6 +11,7 @@ t/base.t
 t/convert.t
 t/default.t
 t/delim.t
+t/href.t
 t/importall.t
 t/nopack.t
 t/packfmt.t

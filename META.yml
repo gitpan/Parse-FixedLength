@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Parse-FixedLength
-version:            5.38
+version:            5.39
 abstract:           parse an ascii string containing fixed length fields into component parts
 author:
     - Douglas Wilson <dougw@cpan.org>

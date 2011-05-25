@@ -1,4 +1,8 @@
 Revision history for Perl extension Parse::FixedLength.
+5.39  Wed May 25 16:00:00  2011
+    - Document href option.
+    - Allow href from href option to be used in pack.
+    - add href.t to MANIFEST.
 5.38  Wed May 25 16:00:00  2011
     - Allow hashref to be passed in to parser.
 5.37  Thu Dec 30 16:00:00  2005
