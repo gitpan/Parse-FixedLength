@@ -1,4 +1,6 @@
 Revision history for Perl extension Parse::FixedLength.
+5.38  Wed May 25 16:00:00  2011
+    - Allow hashref to be passed in to parser.
 5.37  Thu Dec 30 16:00:00  2005
     - Fix bug in C/c format.
 5.36  Thu Dec  1 16:00:00  2005

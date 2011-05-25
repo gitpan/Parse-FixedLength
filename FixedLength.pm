@@ -7,7 +7,7 @@ use strict;
 #-----------------------------------------------------------------------
 use Carp;
 use vars qw($VERSION $DELIM $DEBUG);
-$VERSION   = '5.37';
+$VERSION   = '5.38';
 $DELIM = ":";
 $DEBUG = 0;
 
@@ -101,8 +101,9 @@ sub new {
         ref($$params{'debug'}) ? $$params{'debug'} : \*STDOUT : $DEBUG;
 
     # Make slot to parse data into
-    my %data; @data{@{$self->names}} = undef;
-    $self->{DATA} = \%data;
+    my $ref = $params->{href} || {};
+    @$ref{@{$self->names}} = undef;
+    $self->{DATA} = $ref;
     $self->hash_to_obj($self->{DATA}) unless $params->{no_bless};
 
     $self;
